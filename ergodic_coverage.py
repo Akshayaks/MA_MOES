@@ -17,7 +17,7 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 	print("****************************************************************")
 	print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
 	
-	erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, n_fourier, nPix)
+	erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 
 	opt_init, opt_update, get_params = optimizers.adam(1e-3) #Declaring Adam's optimizer
 
@@ -47,13 +47,14 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 
 		opt_state = opt_update(i, g, opt_state)
 		u = get_params(opt_state)
-		log.append(erg_calc.fourier_ergodic_loss(u, x0, nA).copy())
+		log.append(erg_calc.fourier_ergodic_loss(u, x0).copy())
 		print("Erg: ", log[-1])
 
 		## check for convergence
 		if grad_criterion: # at least 10 iterationss
 			if -0.01 < np.linalg.norm(g) < 0.01:
-				print("Reached grad criterion before number of iterations!")
+				print("Reached grad criterion at iteration: ", i)
+				pdb.set_trace()
 				break
 
 		elif i > 10 and stop_eps > 0: # at least 10 iterationss

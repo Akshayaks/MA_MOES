@@ -43,10 +43,11 @@ class ErgCalc(object):
 	"""
 	modified from Ian's Ergodic Coverage code base.
 	"""
-	def __init__(self, pdf, n_agents, n_fourier=10, nPix=100):
+	def __init__(self, pdf, n_agents, nA, n_fourier, nPix):
 		# print("Number of agents: ", n_agents)
 		self.n_agents = n_agents
 		self.nPix = nPix
+		self.nA = nA
 		# aux func
 		self.fk_vmap = lambda _x, _k: vmap(fk, in_axes=(0,None))(_x, _k)
 
@@ -99,15 +100,15 @@ class ErgCalc(object):
 
 
 		##Uncomment to debug
-		# if flag == True:
-		# 	print("Number of agents in loss function: ", self.n_agents)
-		# 	print("X0 value: ", x0)
-		# 	print("Current u values: ", u.shape)
+		if flag == True:
+			print("Number of agents in loss function: ", self.n_agents)
+			print("Length of horizon: ", self.nA)
+			# print("X0 value: ", x0)
+			# print("Current u values: ", u.shape)
 		# 	pdb.set_trace()
 
 		for i in range(self.n_agents):
-			# u_i = u
-			u_i = u[i*4000:(i+1)*4000] #define nA in this class itself
+			u_i = u[i*self.nA:(i+1)*self.nA]
 			x0_i = x0[i*3:i*3+3]
 			xf, tr = GetTrajXY(u_i, x0_i)
 			trajectories.append(tr)

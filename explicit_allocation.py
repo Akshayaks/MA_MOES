@@ -6,119 +6,18 @@ import scalarize
 from ergodic_coverage import ErgCover
 import jax.numpy as jnp
 import pdb
-from more_itertools import set_partitions
-import itertools
 import copy
-
 import ergodic_metric
 
 from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
-from scipy.signal import find_peaks, peak_prominences
-
-from matplotlib.patches import Rectangle, Circle
 from scipy.stats import wasserstein_distance
 
 import argparse
 import time
 import math
 import os
-
-np.random.seed(100)
-
-def gen_start_pos(folder, n_agents):
-  #Generate random starting positions (x,y) for the agents
-  s0_arr = {}
-  for pbm_file in os.listdir(folder):
-    pos = np.random.uniform(0,1,2*n_agents)
-
-    s0 = []
-    k = 0
-    for i in range(n_agents):
-      s0.append(pos[k])
-      s0.append(pos[k+1])
-      s0.append(0)        #Starting orientation is always 0
-      k += 2
-    s0_arr[pbm_file] = np.array(s0)
-    np.save("start_pos.npy",s0_arr)
-  return s0_arr
-
-def random_start_pos(n_agents):
-  #Generate random starting positions (x,y) for the agents
-  pos = np.random.uniform(0,1,2*n_agents)
-
-  s0 = []
-  k = 0
-  for i in range(n_agents):
-    s0.append(pos[k])
-    s0.append(pos[k+1])
-    s0.append(0)        #Starting orientation is always 0
-    k += 2
-
-  return np.array(s0)
-
-def display_map(pbm,start_pos,pbm_file,tj=None,window=None,r=None,title=None):
-  x = np.linspace(0,100,num=100)
-  y = np.linspace(0,100,num=100)
-  X,Y = np.meshgrid(x,y)
-
-  n_obj = len(pbm.pdfs)
-  n_col = math.ceil(n_obj/2)
-  if n_col == 1:
-    n_col += 1
-  n_agents = int(len(start_pos)/3)
-  print(n_agents)
-
-  fig, axs = plt.subplots(2, n_col,figsize=(5,5))
-  l = 0
-  colors = ["green","red","yellow","blue","cyan","magento","#eeefff","#ffa500","#a020f0","#ffc0cb"]
-
-  for i in range(2):
-    for j in range(n_col):
-      print(l)
-      axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
-      axs[i,j].set_title("Info Map "+str(l+1))
-      for k in range(n_agents):
-        axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
-        if window:
-          w_size = window[l,k]
-          x0 = pbm.s0[k*3]*100
-          y0 = pbm.s0[k*3+1]*100
-          h1 = max(0,y0-w_size)
-          h2 = min(100,y0+w_size)
-          w1 = max(0,x0-w_size)
-          w2 = min(100,x0+w_size)
-          axs[i,j].add_patch(Rectangle((w1,h1),
-                           w2-w1, h2-h1,
-                           fc ='none', 
-                           ec ='w',
-                           lw = 1) )
-      l += 1
-      if l == n_obj:
-        break
-    if l == n_obj:
-      break
-  if title:
-    fig.suptitle(title)
-  # plt.savefig("./test_cases_win_results/"+pbm_file+".jpg")
-  # plt.show()
-  return
-
-#Add lines to add the case when all the maps are allotted to one agent
-def generate_allocations(n_obj,n_agents):
-
-  objs = np.arange(0,n_obj)
-
-  comb = list(set_partitions(objs, n_agents))
-
-  alloc_comb = []
-
-  for c in comb:
-    alloc_comb.append(list(itertools.permutations(c)))
-
-  alloc_comb = list(itertools.chain.from_iterable(alloc_comb))
-
-  return alloc_comb
+from utils import *
 
 '''
 Generate the pareto front using MOES and pick the best weight to scalarize maps
@@ -194,7 +93,7 @@ def main_run_comb_allocation(pbm_file,n_agents):
       
       for p in alloc[i]:
         pdf_indv = jnp.asarray(pdf_list[p].flatten())
-        EC = ergodic_metric.ErgCalc(pdf_indv,1,n_scalar,problem.pix)
+        EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
         erg_mat[idx][p] = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
 
   runtime = time.time() - start_time
@@ -208,36 +107,6 @@ def main_run_comb_allocation(pbm_file,n_agents):
   
   return best_alloc,runtime
 
-'''
-Display the map and the cropped portion of the map (window approach)
-'''
-def display_both(pdf,s0,h1,h2,w1,w2,pdf_zeroed,start_pos,tj,w_size):
-   h,w = pdf.shape
-   print(pdf.shape)
-   x = np.linspace(0,w,num=w)
-   y = np.linspace(0,h,num=h)
-   X,Y = np.meshgrid(x,y)
-
-   fig, axs = plt.subplots(2, 2)
-   axs[0,0].contourf(X, Y, pdf, levels=np.linspace(np.min(pdf), np.max(pdf),100), cmap='gray')
-   axs[0,0].set_title('Info Map')
-
-   axs[0,0].plot(s0[0]*100,s0[1]*100,"go--")
-   axs[0,0].add_patch(Rectangle((w1,h1),
-                           w2-w1, h2-h1,
-                           fc ='none', 
-                           ec ='w',
-                           lw = 1) )
-   x1 = np.linspace(0,w2-w1,num=w2-w1)
-   y1 = np.linspace(0,h2-h1,num=h2-h1)
-   X1,Y1 = np.meshgrid(x1,y1)
-
-   axs[0,1].contourf(X1, Y1, pdf_zeroed, levels=np.linspace(np.min(pdf), np.max(pdf),100), cmap='gray')
-   axs[0,1].plot(start_pos[0]*(w2-w1),start_pos[1]*(h2-h1),"go--")
-   axs[0,1].plot(tj[:,0]*(w2-w1),tj[:,1]*(h2-h1))
-   # plt.pause(1)
-   # plt.savefig("./windows/"+str(w_size)+"_"+str(start_pos[0]*100)+"_"+str(start_pos[1]*100)+".jpg")
-   plt.show()
 
 def get_win_sizes(problem,n_agents,n_scalar):
   n = len(problem.pdfs)
@@ -245,7 +114,7 @@ def get_win_sizes(problem,n_agents,n_scalar):
   for i in range(n):
     for j in range(n_agents):
       pdf = problem.pdfs[i]
-      EC_whole = ergodic_metric.ErgCalc(pdf.flatten(),1,n_scalar,problem.pix)
+      EC_whole = ergodic_metric.ErgCalc(pdf.flatten(),1,problem.nA,n_scalar,problem.pix)
       w_size = 0
       for w_size in np.arange(5,90,5):
         ###   To create a window around the agent ###
@@ -262,7 +131,7 @@ def get_win_sizes(problem,n_agents,n_scalar):
         
         pdf_zeroed = np.zeros_like(pdf)
         pdf_zeroed[h1:h2,w1:w2] = pdf[h1:h2,w1:w2]
-        EC_window = ergodic_metric.ErgCalc(pdf_zeroed.flatten(),1,n_scalar,problem.pix)
+        EC_window = ergodic_metric.ErgCalc(pdf_zeroed.flatten(),1,problem.nA,n_scalar,problem.pix)
         FC_diff = np.linalg.norm(EC_whole.phik - EC_window.phik)
         print("fc_diff: ",FC_diff)
         if FC_diff < 1:
@@ -352,7 +221,7 @@ def main_run_win_alloc(pbm_file,n_agents,crop=False):
 
       for p in alloc[i]:
         pdf_indv = jnp.asarray(pdf_list[p].flatten())
-        EC = ergodic_metric.ErgCalc(pdf_indv,1,n_scalar,problem.pix)
+        EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
         erg_mat[idx][p] = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
         print("Ergodicity on the entire map: ", erg_mat[idx][p])
 
@@ -567,15 +436,15 @@ def greedy_alloc():
   if agent1_allocation == 0:
     control1, erg1, iter1 = ErgCover(p1, 1, problem.nA, problem.s0[0:3], n_scalar, problem.pix, 1000, False, None, 1e-3, 0)
     control2, erg2, iter2 = ErgCover(p2, 1, problem.nA, problem.s0[3:6], n_scalar, problem.pix, 1000, False, None, 1e-3, 0)
-    EC1 = ergodic_metric.ErgCalc(p1,1,n_scalar,problem.pix)
-    EC2 = ergodic_metric.ErgCalc(p2,1,n_scalar,problem.pix)
+    EC1 = ergodic_metric.ErgCalc(p1,1,problem.nA,n_scalar,problem.pix)
+    EC2 = ergodic_metric.ErgCalc(p2,1,problem.nA,n_scalar,problem.pix)
     e1 = EC1.fourier_ergodic_loss(control1, problem.s0[0:3], True)
     e2 = EC2.fourier_ergodic_loss(control2, problem.s0[3:6], True)
   else:
     control1, erg1, iter1 = ErgCover(p1, 1, problem.nA, problem.s0[3:6], n_scalar, problem.pix, 1000, False, None, 1e-3, 0)
     control2, erg2, iter2 = ErgCover(p2, 1, problem.nA, problem.s0[0:3], n_scalar, problem.pix, 1000, False, None, 1e-3, 0)
-    EC1 = ergodic_metric.ErgCalc(p1,1,n_scalar,problem.pix)
-    EC2 = ergodic_metric.ErgCalc(p2,1,n_scalar,problem.pix)
+    EC1 = ergodic_metric.ErgCalc(p1,1,problem.nA,n_scalar,problem.pix)
+    EC2 = ergodic_metric.ErgCalc(p2,1,problem.nA,n_scalar,problem.pix)
     e1 = EC1.fourier_ergodic_loss(control1, problem.s0[3:6], True)
     e2 = EC2.fourier_ergodic_loss(control2, problem.s0[0:3], True)
   
