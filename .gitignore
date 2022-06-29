@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+Result_figures/
+test_cases_results/
+test_cases_win_results/
