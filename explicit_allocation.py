@@ -237,126 +237,50 @@ def main_run_win_alloc(pbm_file,n_agents,crop=False):
   
   return best_alloc,runtime
 
-def detect_peaks(image):
-      """
-      Takes an image and detect the peaks usingthe local maximum filter.
-      Returns a boolean mask of the peaks (i.e. 1 when
-      the pixel's value is the neighborhood maximum, 0 otherwise)
-      """
-
-      # define an 8-connected neighborhood
-      neighborhood = generate_binary_structure(2,2)
-
-      #apply the local maximum filter; all pixel of maximal value 
-      #in their neighborhood are set to 1
-      local_max = maximum_filter(image, footprint=neighborhood)==image
-
-      plt.imshow(local_max,origin='lower')
-      plt.show()
-      #local_max is a mask that contains the peaks we are 
-      #looking for, but also the background.
-      #In order to isolate the peaks we must remove the background from the mask.
-
-      #we create the mask of the background
-      background = (image==0)
-
-      #a little technicality: we must erode the background in order to 
-      #successfully subtract it form local_max, otherwise a line will 
-      #appear along the background border (artifact of the local maximum filter)
-      eroded_background = binary_erosion(background, structure=neighborhood, border_value=1)
-
-      #we obtain the final mask, containing only peaks, 
-      #by removing the background from the local_max mask (xor operation)
-      detected_peaks = local_max ^ eroded_background
-
-      return detected_peaks
-
 def case_3_allocation():
   n_agents = 5
   n_obj = 2 
 
-  pbm_file = "build/instances/MOES-O2-peaks_pix_100_multimodal.pickle"
+  pbm_file = "build_prob/instances/MOES-O2-peaks_pix_100_multimodal.pickle"
   
-  problem = common.LoadProblem(pbm_file, n_agents)
+  problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
   n_scalar = 10
 
   problem.nA = 100 
   nA = problem.nA
-  
-  #Generate random starting positions for the agents
-  pos = np.random.uniform(0,1,2*n_agents)
 
-  problem.s0 = []
-  k = 0
-  for i in range(n_agents):
-    problem.s0.append(pos[k])
-    problem.s0.append(pos[k+1])
-    problem.s0.append(0)
-    k += 2
-
-  problem.s0 = np.array(problem.s0)
+  problem.s0 = random_start_pos(n_agents)
 
   print("Agent start positions allotted!")
 
-  ###  Display the three information maps  ##############
-
-  x = np.linspace(0,100,num=100)
-  y = np.linspace(0,100,num=100)
-  X,Y = np.meshgrid(x,y)
-
-  fig, axs = plt.subplots(2, 3)
-  axs[0,0].contourf(X, Y, problem.pdf1, levels=np.linspace(np.min(problem.pdf1), np.max(problem.pdf1),100), cmap='gray')
-  axs[0,0].set_title('First Info Map')
-  axs[0,1].contourf(X, Y, problem.pdf2, levels=np.linspace(np.min(problem.pdf2), np.max(problem.pdf2),100), cmap='gray')
-  axs[0,1].set_title('Second Info Map')
-  # axs[0,2].contourf(X, Y, problem.pdf3, levels=np.linspace(np.min(problem.pdf3), np.max(problem.pdf3),100), cmap='gray')
-  # axs[0,2].set_title('Third Info Map')
-
-  axs[0,0].plot(problem.s0[0]*100,problem.s0[1]*100,"go--")
-  axs[0,0].plot(problem.s0[3]*100,problem.s0[4]*100,"ro--")
-  axs[0,0].plot(problem.s0[6]*100,problem.s0[7]*100,"bo--")
-  axs[0,0].plot(problem.s0[9]*100,problem.s0[10]*100,"wo--")
-  axs[0,0].plot(problem.s0[12]*100,problem.s0[13]*100,"yo--")
-
-  axs[0,1].plot(problem.s0[0]*100,problem.s0[1]*100,"go--")
-  axs[0,1].plot(problem.s0[3]*100,problem.s0[4]*100,"ro--")
-  axs[0,1].plot(problem.s0[6]*100,problem.s0[7]*100,"bo--")
-  axs[0,1].plot(problem.s0[9]*100,problem.s0[10]*100,"wo--")
-  axs[0,1].plot(problem.s0[12]*100,problem.s0[13]*100,"yo--")
-
-  # axs[0,2].plot(problem.s0[0]*100,problem.s0[1]*100,"go--")
-  # axs[0,2].plot(problem.s0[3]*100,problem.s0[4]*100,"ro--")
-  # axs[0,2].plot(problem.s0[6]*100,problem.s0[7]*100,"bo--")
-  # axs[0,2].plot(problem.s0[9]*100,problem.s0[10]*100,"wo--")
-  # axs[0,2].plot(problem.s0[12]*100,problem.s0[13]*100,"yo--")
-
-  plt.pause(1)
-  plt.show()
+  display_map(problem,problem.s0)
   
-
-  pdf_list = [problem.pdf1,problem.pdf2] #,problem.pdf3]
-
-  peaks_array = []
-  for pdf in pdf_list:
-    p = []
-    peaks = detect_peaks(pdf)
-    print("peaks shape: ", peaks.shape)
-    idx = np.argwhere(peaks == True)
-    print("idx: ", idx)
-    p.append(pdf[idx])
-    peaks_array.append(p)
-  print("Peaks array: ", peaks_array)
-
+  pdf_list = problem.pdfs
+  was_dist = []
   uniform_dist = (np.ones((100,100))*0.0001).flatten()
 
-  pdf1 = pdf_list[0].flatten()
-  pdf2 = pdf_list[1].flatten()
-  dist = wasserstein_distance(pdf1,pdf2)
-  print("wasserstein_distance between the two maps: ", dist)
-  print("wasserstein_distance between map 1 and uniform dist: ", wasserstein_distance(pdf1,uniform_dist))
-  print("wasserstein_distance between map 2 and uniform dist: ", wasserstein_distance(pdf2,uniform_dist))
+  for pdf in pdf_list:
+    was_dist.append(1/wasserstein_distance(pdf.flatten(),uniform_dist))
 
+  n_agents_allotted = []
+  for i in range(len(was_dist)):
+    was_dist[i] = was_dist[i]/sum(was_dist)
+    n_agents_allotted.append(math.floor(was_dist[i]*n_agents))
+
+  print("Earth mover distance for all the maps: ", was_dist)
+  print("Number of agents allotted to each map: ", n_agents_allotted)
+  pdb.set_trace()
+
+  allocation = []
+  for idx,p in enumerate(pdf_list):
+    indv_erg = []
+    for n in range(n_agents):
+      control, erg, _ = ErgCover(p.flatten(), 1, problem.nA, problem.s0[n*3:n*3+3], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+      EC = ergodic_metric.ErgCalc(p.flatten(),1,problem.nA,n_scalar,problem.pix)
+      indv_erg.append(EC.fourier_ergodic_loss(control,problem.s0[3*n:3+3*n]))
+    allocation.append(np.argpartition(indv_erg,n_agents_allotted[idx])[:n_agents_allotted[idx]])
+  print("Final allocation: ", allocation)
   return
 
 
@@ -507,7 +431,7 @@ def H_function(pdf,s0,h=0):
     for j in range(pdf.shape[1]):
       dist = np.sqrt((s0[0]*100 - i)**2 +  (s0[1]*100 - j)**2)
       if dist != 0:
-        wt_dist[i][j] = pdf[i][j]/dist
+        wt_dist[i][j] = pdf[i][j]*dist
   h_value = sum(sum(wt_dist))
   return h_value
 

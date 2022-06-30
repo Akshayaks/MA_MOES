@@ -1,4 +1,3 @@
-
 import numpy as onp
 import jax.numpy as np
 from jax.experimental import optimizers
@@ -36,14 +35,13 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		nIter = int(1e5) # set a large number, stop until converge.
 
 	if grad_criterion == True: # We want to iterate till we find a minima 
-		nIter = int(1e5) # Again set a very large number of iterations
+		nIter = int(1000) # Again set a very large number of iterations
 		print("**Grad criterion activated!**")
 
 	i = 0
 	for i in range(nIter):
 		# print("****Iter: ",i)
 		g = erg_calc.gradient(get_params(opt_state), x0)
-		# print("g norm: ", np.linalg.norm(g))
 
 		opt_state = opt_update(i, g, opt_state)
 		u = get_params(opt_state)
@@ -54,8 +52,8 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		if grad_criterion: # at least 10 iterationss
 			if -0.01 < np.linalg.norm(g) < 0.01:
 				print("Reached grad criterion at iteration: ", i)
-				pdb.set_trace()
-				break
+				# pdb.set_trace()
+				# break
 
 		elif i > 10 and stop_eps > 0: # at least 10 iterationss
 			if onp.abs(log[-1]) < stop_eps:

@@ -94,18 +94,16 @@ class ErgCalc(object):
 		ck = ck / self.hk
 		return ck
 
-	def fourier_ergodic_loss(self, u, x0, flag=False): #here call Get TrajXY and get_ck for each agent Can add nA here
+	def fourier_ergodic_loss(self, u, x0, flag=False): 
 		ck = 0
 		trajectories = []
 
-
-		##Uncomment to debug
+		##To debug
 		if flag == True:
 			print("Number of agents in loss function: ", self.n_agents)
 			print("Length of horizon: ", self.nA)
-			# print("X0 value: ", x0)
-			# print("Current u values: ", u.shape)
-		# 	pdb.set_trace()
+			print("X0 value: ", x0)
+			print("Current u values: ", u.shape)
 
 		for i in range(self.n_agents):
 			u_i = u[i*self.nA:(i+1)*self.nA]
