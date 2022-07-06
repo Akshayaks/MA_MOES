@@ -9,7 +9,7 @@ import common as cm
 def main_MOES_Fourier():
   nA = 100
   n_fourier = 5
-  pbm_file = "build/instances/MOES_Fourier_" + str(n_fourier) + "_zeroed_normalized_l2.pickle"
+  pbm_file = "build_prob/instances/MOES_example.pickle"
   cm.GenMOESProblemFourier(nA,n_fourier, pbm_file)
 
 def main_MOESO2Simple(): # two-obj
@@ -33,6 +33,6 @@ def main_MOESO2Random():
   cm.GenMOESProblemO2Random(nGau, k, nA, pbm_file)
 
 if __name__ == "__main__":
-  main_MOESO3Simple()
+  main_MOES_Fourier()
   
   

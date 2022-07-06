@@ -166,7 +166,7 @@ def MOESSolveScalarize(pbm, n_agents, n_weight=11, n_basis=10, n_iter=1000, seqO
       erg_vec = []
       for p in pbm.pdfs:
         p = jnp.asarray(p.flatten())
-        EC = ergodic_metric.ErgCalc(p,1,10,pbm.pix)
+        EC = ergodic_metric.ErgCalc(p,1,pbm.nA,10,pbm.pix)
         e = EC.fourier_ergodic_loss(u,pbm.s0,pbm.nA)
         erg_vec.append(e)
     else:

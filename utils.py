@@ -7,6 +7,9 @@ import math
 
 np.random.seed(100)
 
+def kl_divergence(p, q):
+    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
 def gen_start_pos(folder, n_agents):
   #Generate random starting positions (x,y) for the agents
   s0_arr = {}
@@ -101,8 +104,8 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
   if title:
     fig.suptitle(title)
   if pbm_file:
-    plt.savefig("./test_cases_win_results/"+pbm_file+".jpg")
-  plt.show()
+    plt.savefig("./test_cases_EEE_results/"+pbm_file+".jpg")
+  # plt.show()
   return
 
 '''

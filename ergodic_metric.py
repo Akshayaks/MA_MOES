@@ -20,6 +20,7 @@ def fDiffDrive(x0, u):
 	u = (v,w)
 	"""
 	# x = x0 + np.array([np.cos(x0[2])*np.abs(u[0]), np.sin(x0[2])*np.abs(u[0]), u[1]])
+	u = 0.3*np.tanh(u) #Limit the maximum velocity to 1
 	x = x0 + np.array([np.cos(x0[2])*np.abs(u[0]), np.sin(x0[2])*np.abs(u[0]), 10*u[1]])
 	return x, x0
 

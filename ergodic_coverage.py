@@ -8,7 +8,7 @@ import pdb
 
 GLOBAL_NUM_K = 0
 
-def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=None, stop_eps=-1, kkk=0,grad_criterion=False):
+def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=None, stop_eps=-1, kkk=0,grad_criterion=False,pdf1=None,pdf2=None):
 	"""
 	run ergodic coverage over a info map. Modified from Ian's code.
 	return a list of control inputs.
@@ -17,6 +17,10 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 	print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
 	
 	erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
+	if pdf1 is not None:
+		erg_calc1 = ergodic_metric.ErgCalc(pdf1, n_agents, nA, n_fourier, nPix)
+	if pdf2 is not None:
+		erg_calc2 = ergodic_metric.ErgCalc(pdf2, n_agents, nA, n_fourier, nPix)
 
 	opt_init, opt_update, get_params = optimizers.adam(1e-3) #Declaring Adam's optimizer
 
@@ -30,6 +34,8 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		u = np.array(u_init)
 	opt_state = opt_init(u)
 	log = []
+	log1 = []
+	log2 = []
 
 	if stop_eps > 0:
 		nIter = int(1e5) # set a large number, stop until converge.
@@ -46,6 +52,9 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		opt_state = opt_update(i, g, opt_state)
 		u = get_params(opt_state)
 		log.append(erg_calc.fourier_ergodic_loss(u, x0).copy())
+		if pdf1 is not None:
+			log1.append(erg_calc1.fourier_ergodic_loss(u, x0).copy())
+			log2.append(erg_calc2.fourier_ergodic_loss(u, x0).copy())
 		print("Erg: ", log[-1])
 
 		## check for convergence
@@ -72,7 +81,7 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		plt.axis("off")
 		plt.pause(1)
 		plt.savefig("build/plot_traj/MOES-O2-nA_"+str(nA)+"_num_"+str(kkk)+".png", bbox_inches='tight',dpi=200)
-
-
+	if pdf1 is not None:
+		return get_params(opt_state), log, i, log1, log2
 	return get_params(opt_state), log, i
 

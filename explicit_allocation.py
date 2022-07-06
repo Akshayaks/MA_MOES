@@ -68,6 +68,8 @@ def main_run_comb_allocation(pbm_file,n_agents):
   print("Agent start positions allotted!")
 
   alloc_comb = generate_allocations(n_obj,n_agents)
+  print(alloc_comb)
+  pdb.set_trace()
 
   erg_mat = np.zeros((len(alloc_comb),n_obj))   #For each allocation, we want the individual ergodicities
 
@@ -102,6 +104,68 @@ def main_run_comb_allocation(pbm_file,n_agents):
   for i in range(len(alloc_comb)):
     max_array.append(max(erg_mat[i][:]))
   best_alloc = np.argmin(max_array)
+  print(erg_mat)
+
+  display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(alloc_comb[best_alloc]))
+  
+  return best_alloc,runtime
+
+#Evaluate all combinations of allocation
+def main_run_EEE(pbm_file,n_agents):
+
+  start_time = time.time()
+  pbm_file_complete = "./build_prob/test_cases/" + pbm_file
+  
+  problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
+
+  n_scalar = 10
+  n_obj = len(problem.pdfs)
+
+  problem.nA = 100 
+  nA = problem.nA
+  
+  start_pos = np.load("start_pos.npy",allow_pickle=True)
+
+  problem.s0 = start_pos.item().get(pbm_file)
+  print("Read start position as: ",problem.s0)
+
+  print("Agent start positions allotted!")
+
+  alloc_comb = generate_allocations(n_obj,n_agents)
+
+  h_mat = np.zeros((n_agents,n_obj))
+
+  pdf_list = problem.pdfs
+  trajectory = []
+
+  for i in range(n_agents):
+    for j in range(n_obj):
+      h_mat[i][j] = H_function(pdf_list[j],problem.s0[3*i:3*i+3])
+  print("Hmat: ", h_mat)
+
+  alloc_h_mat = np.zeros((len(alloc_comb),n_obj))   #For each allocation, we want the individual ergodicities
+
+  for idx,alloc in enumerate(alloc_comb):
+    print(alloc)
+    for i in range(n_agents):
+      pdf = np.zeros((100,100))
+      if len(alloc[i]) > 1:
+        s = 0
+        for p in alloc[i]:
+          s += h_mat[i][p]
+        for p in alloc[i]:
+          alloc_h_mat[idx][p] = s/len(alloc[i])
+      else:
+        alloc_h_mat[idx][alloc[i][0]] = h_mat[i][alloc[i][0]]
+
+  runtime = time.time() - start_time
+  
+  max_array = []
+  for i in range(len(alloc_comb)):
+    max_array.append(max(alloc_h_mat[i][:]))
+  best_alloc = np.argmin(max_array)
+  print("Best_allocation: ", best_alloc)
+  print(alloc_h_mat)
 
   display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(alloc_comb[best_alloc]))
   
@@ -422,16 +486,15 @@ def H_function(pdf,s0,h=0):
   print(s0[0]*100,s0[1]*100)
   print(s0[0],s0[1])
 
-  x = np.linspace(0,100,num=100)
-  y = np.linspace(0,100,num=100)
-  X,Y = np.meshgrid(x,y)
-
   wt_dist = np.zeros_like(pdf)
   for i in range(pdf.shape[0]):
     for j in range(pdf.shape[1]):
       dist = np.sqrt((s0[0]*100 - i)**2 +  (s0[1]*100 - j)**2)
       if dist != 0:
-        wt_dist[i][j] = pdf[i][j]*dist
+        wt_dist[i][j] = pdf[j][i]*dist
+  # plt.imshow(wt_dist,origin='lower')
+  # plt.show()
+  # plt.pause(1)
   h_value = sum(sum(wt_dist))
   return h_value
 
@@ -441,14 +504,14 @@ if __name__ == "__main__":
   parser.add_argument('--method', type=str, required=True, help="Method to run")
 
   args = parser.parse_args()
-  pbm_file = "2_maps_example_4.pickle"
+  pbm_file = "3_maps_example_0.pickle"
   
   if args.method == "case3":
     case_3_allocation()
   elif args.method == "MOES":
     alloc,runtime = main_run_comb_allocation(pbm_file,2)
   elif args.method == "EEE":
-    allocation_h_func()
+    main_run_EEE(pbm_file,2)
   elif args.method == "greedy":
     greedy_alloc()
   else:

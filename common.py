@@ -165,19 +165,24 @@ def GenMOESProblemFourier(nA,n_fourier, pbm_file_name):
     pix = 100
     save_dir = "/build/instances/"
 
-    mu = np.array([[.2, .2],[0.75,0.75]])
-    cov = np.array([[[.01, 0], [0, .01]],[[0.02, 0], [0, 0.02]]])
-    pdf = gaussianMixtureDistribution(2, pix, mus=mu, covs=cov)
-    print("pdf shape: ", pdf.shape)
-    jpdf = jnp.asarray(pdf.flatten())
+    mu = np.array([[0.75,0.75]])
+    cov = np.array([[[0.01, 0], [0, 0.05]]])
+    pdf1 = gaussianMixtureDistribution(1, pix, mus=mu, covs=cov)
 
-    Erg_obj = ergodic_metric.ErgCalc(jpdf, 1, n_fourier, pix)
-    print("Created phik_array: ", len(Erg_obj.phik_array))
+    mu = np.array([[0.15,0.15]])
+    cov = np.array([[[0.03, 0], [0, 0.01]]])
+    pdf2 = gaussianMixtureDistribution(1, pix, mus=mu, covs=cov)
+    # print("pdf shape: ", pdf.shape)
+    # jpdf = jnp.asarray(pdf.flatten())
+
+    # Erg_obj = ergodic_metric.ErgCalc(jpdf, 1, n_fourier, pix)
+    # print("Created phik_array: ", len(Erg_obj.phik_array))
 
     dic = dict()
     dic["s0"] = s0
     dic["nA"] = nA
-    dic["pdfs"] = Erg_obj.phik_array
+    dic["pdfs"] = [pdf1,pdf2]
+    # Erg_obj.phik_array
     dic["nPixel"] = pix
 
     SavePickle(dic, pbm_file_name)

@@ -22,6 +22,18 @@ def run_exp_moes(folder):
 	print("Average runtime of exhaustive MOES: ",sum(run_times)/len(run_times))
 	print("Runtimes: ", run_times)
 
+def run_exp_eee(folder):
+	run_times = []
+	for pbm_file in os.listdir(folder):
+		
+		best_alloc,run_time = main_run_EEE(pbm_file,2)
+		print("Best allocation: ", best_alloc)
+		print("Runtime: ", run_time)
+		run_times.append(run_time)
+
+	print("Average runtime of EEE function allocation: ",sum(run_times)/len(run_times))
+	print("Runtimes: ", run_times)
+
 def run_exp_win(folder):
 	run_times = []
 	for pbm_file in os.listdir(folder):
@@ -50,6 +62,8 @@ if __name__ == "__main__":
   	run_exp_moes(folder)
   elif method == "window":
   	run_exp_win(folder)
+  elif method == "EEE":
+  	run_exp_eee(folder)
   else:
   	print("Please enter a valid method and folder")
 
