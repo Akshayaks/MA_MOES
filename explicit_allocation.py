@@ -69,7 +69,7 @@ def main_run_comb_allocation(pbm_file,n_agents):
 
   alloc_comb = generate_allocations(n_obj,n_agents)
   print(alloc_comb)
-  pdb.set_trace()
+  # pdb.set_trace()
 
   erg_mat = np.zeros((len(alloc_comb),n_obj))   #For each allocation, we want the individual ergodicities
 
@@ -78,6 +78,117 @@ def main_run_comb_allocation(pbm_file,n_agents):
 
   for idx,alloc in enumerate(alloc_comb):
     print(alloc)
+    for i in range(n_agents):
+      pdf = np.zeros((100,100))
+      if len(alloc[i]) > 1:
+        # for a in alloc[i]:
+          # pdf += (1/len(alloc[i]))*pdf_list[a]
+        pdf = scalarize_minmax([pdf_list[a] for a in alloc[i]],problem.s0[i*3:i*3+3],problem.nA)
+      else:
+        pdf = pdf_list[alloc[i][0]]
+      
+      pdf = jnp.asarray(pdf.flatten())
+      print(problem.s0)
+      
+      #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
+      control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=False)
+      
+      for p in alloc[i]:
+        pdf_indv = jnp.asarray(pdf_list[p].flatten())
+        EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+        erg_mat[idx][p] = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
+
+  runtime = time.time() - start_time
+  
+  max_array = []
+  for i in range(len(alloc_comb)):
+    max_array.append(max(erg_mat[i][:]))
+  best_alloc = np.argmin(max_array)
+  print(erg_mat)
+
+  display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(alloc_comb[best_alloc]))
+  
+  return best_alloc,runtime
+
+#Evaluate only select combinations of allocation
+def main_run_comb_with_heuristics(pbm_file,n_agents,percent_ignored):
+
+  start_time = time.time()
+  pbm_file_complete = "./build_prob/test_cases/" + pbm_file
+  
+  problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
+
+  n_scalar = 10
+  n_obj = len(problem.pdfs)
+
+  problem.nA = 100 
+  nA = problem.nA
+  
+  start_pos = np.load("start_pos.npy",allow_pickle=True)
+
+  problem.s0 = start_pos.item().get(pbm_file)
+  print("Read start position as: ",problem.s0)
+
+  print("Agent start positions allotted!")
+
+  alloc_comb = generate_allocations(n_obj,n_agents)
+  print(alloc_comb)
+  # pdb.set_trace()
+  print(n_agents,n_obj)
+
+  h_mat = np.zeros((n_agents,n_obj))
+
+  pdf_list = problem.pdfs
+  trajectory = []
+
+  for i in range(n_agents):
+    for j in range(n_obj):
+      h_mat[i][j] = H_function(pdf_list[j],problem.s0[3*i:3*i+3])
+  print("Hmat: ", h_mat)
+
+  alloc_h_mat = np.zeros((len(alloc_comb),n_obj))   #For each allocation, we want the individual ergodicities
+
+  for idx,alloc in enumerate(alloc_comb):
+    print(alloc)
+    for i in range(n_agents):
+      pdf = np.zeros((100,100))
+      if len(alloc[i]) > 1:
+        s = 0
+        for p in alloc[i]:
+          s += h_mat[i][p]
+        for p in alloc[i]:
+          alloc_h_mat[idx][p] = s/len(alloc[i])
+      else:
+        alloc_h_mat[idx][alloc[i][0]] = h_mat[i][alloc[i][0]]
+  print("Alloc_hmat: ", alloc_h_mat)
+  max_array = []
+  for i in range(len(alloc_comb)):
+    max_array.append(max(alloc_h_mat[i][:]))
+
+  alloc_ignored = np.zeros(len(alloc_comb))
+  num_ignored = int(len(alloc_comb)*percent_ignored)
+  print("Number of allocation combinations ignored: ", num_ignored)
+  
+  idx_ignored = np.argsort(max_array)[-num_ignored:]
+  print("Indices ignored: ", idx_ignored)
+  for i in idx_ignored:
+    alloc_ignored[i] = 1
+  print("Allocation combinations ignored: ", alloc_ignored)
+  print(pbm_file)
+  pdb.set_trace()
+  return [],[]
+  erg_mat = np.zeros((len(alloc_comb),n_obj))   #For each allocation, we want the individual ergodicities
+
+  pdf_list = problem.pdfs
+  trajectory = []
+
+  for idx,alloc in enumerate(alloc_comb):
+    print(alloc)
+    if alloc_ignored[idx]:
+      print("Ignoring allocation combination!")
+      erg_mat[idx][:] = np.ones(n_obj)*5000
+      # pdb.set_trace()
+      continue
     for i in range(n_agents):
       pdf = np.zeros((100,100))
       if len(alloc[i]) > 1:
@@ -504,7 +615,7 @@ if __name__ == "__main__":
   parser.add_argument('--method', type=str, required=True, help="Method to run")
 
   args = parser.parse_args()
-  pbm_file = "3_maps_example_0.pickle"
+  pbm_file = "4_maps_example_3.pickle"
   
   if args.method == "case3":
     case_3_allocation()

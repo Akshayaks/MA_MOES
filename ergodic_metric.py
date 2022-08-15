@@ -9,9 +9,10 @@ from functools import partial
 import pdb
 from sklearn.preprocessing import normalize
 
-
+rob_vel = 0.8
 def fDyn(x, u): # dynamics of the robot - point mass
-	xnew = x + np.array([np.tanh(u[0]),np.tanh(u[0]),10*u[1]])
+	# xnew = x + np.array([np.tanh(u[0]),np.tanh(u[0]),10*u[1]])
+	xnew = x + np.array([0.8,0.8,10*u[1]])
 	return xnew, x
 
 def fDiffDrive(x0, u):

@@ -17,14 +17,14 @@ def generate_bands_graph(pbm_file,n_agents,n_scalar,nA):
 	
 	start_pos = np.load("start_pos.npy",allow_pickle=True)
 
-	problem.s0 = start_pos.item().get("3_maps_example_0.pickle")
+	problem.s0 = start_pos.item().get("4_maps_example_0.pickle")
 	print("Read start position as: ",problem.s0)
 
 	print("Agent start positions allotted!")
 
 	alloc_comb = generate_allocations(n_obj,n_agents)
 	print(alloc_comb)
-
+	pdb.set_trace()
 
 	erg_variation_alloc = {}
 
@@ -65,23 +65,31 @@ def generate_bands_graph(pbm_file,n_agents,n_scalar,nA):
 	      EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
 	      erg_mat[idx][p] = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
 	  erg_variation_alloc[idx] = erg_history
-	return erg_variation_alloc
+	return erg_variation_alloc, alloc_comb
 
 
 if __name__ == "__main__":
-	pbm_file = "./build_prob/test_cases/3_maps_example_0.pickle"
+	pbm_file = "./build_prob/test_cases/4_maps_example_0.pickle"
 	n_scalar = 10
 	n_agents = 2
 	nA = 100
-	erg_variation = generate_bands_graph(pbm_file,n_agents,n_scalar,nA)
+	erg_variation, alloc_comb = generate_bands_graph(pbm_file,n_agents,n_scalar,nA)
+	print("Shape of erg_variation: ", len(erg_variation))
 
 	alloc_idx = 0
-	n_obj = 3
+	n_obj = 4
+	alloc_comb = [([1], [2, 3, 4]), ([2, 3, 4], [1]), ([1, 2], [3, 4]), ([3, 4], [1, 2]), ([2], [1, 3, 4]), ([1, 3, 4], [2]), ([1, 2, 3], [4]), ([4], [1, 2, 3]), ([2, 3], [1, 4]), ([1, 4], [2, 3]), ([1, 3], [2, 4]), ([2, 4], [1, 3]), ([3], [1, 2, 4]), ([1, 2, 4], [3])]
+	# alloc_comb = [([1], [2, 3]), ([2, 3], [1]), ([1, 2], [3]), ([3], [1, 2]), ([2], [1, 3]), ([1, 3], [2])]
 
 	for i in range(n_obj):
-		erg = erg_variation[alloc_idx][i]
-		iterations = np.arange(0,len(erg))
-		plt.plot(iterations,erg)
+		for a in range(14): #For running through allocation combinations
+			erg = erg_variation[a][i]
+			iterations = np.arange(0,len(erg))
+			plt.plot(iterations,erg,label=str(alloc_comb[a]))
+		plt.title("Ergodicity variation over iterations on Map " + str(i+1))
+		plt.xlabel("Iterations")
+		plt.ylabel("Ergodicity")
+		plt.legend(loc="upper right")
 		plt.show()
 		plt.pause(1)
 

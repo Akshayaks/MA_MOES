@@ -103,8 +103,8 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
       break
   if title:
     fig.suptitle(title)
-  if pbm_file:
-    plt.savefig("./test_cases_EEE_results/"+pbm_file+".jpg")
+  # if pbm_file:
+    # plt.savefig("./test_cases_MOES_EEE_results/"+pbm_file+".jpg")
   # plt.show()
   return
 
