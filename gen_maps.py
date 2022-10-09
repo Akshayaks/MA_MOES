@@ -52,7 +52,9 @@ def GenMOESProblemFourier(nA,n_fourier, pbm_file_name,n_maps):
 if __name__ == "__main__":
 	nA = 100
 	n_fourier = 5
-	n_maps = 100
-	pbm_file = "build_prob/instances/random_maps.pickle"
-	GenMOESProblemFourier(nA,n_fourier, pbm_file, n_maps)
+	n_examples = 100
+	for i in range(n_examples):
+		pbm_file = "build_prob/instances/random_map_" + str(i) + ".pickle"
+		n_maps = random.randint(3,11)
+		GenMOESProblemFourier(nA,n_fourier, pbm_file, n_maps)
 
