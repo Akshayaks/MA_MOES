@@ -218,29 +218,32 @@ def generate_alloc_nodes(root,curr_node,n_obj,num_agents):
 	# print(assignments)
 	return assignments
 
-def find_best_allocation(root,values,ans):
+def find_best_allocation(root,values,alloc,indv_erg):
     # list to store path
     if root == None:
     	return 
     if len(root.children) == 0:
     	print("Reached leaf node")
-    	path = ""
-    	values.append(root.agent)
-    	path += str(values[0])
+    	path = {}
+    	max_erg = []
+    	values.append(root)
+    	path[values[0].agent] = values[0].tasks
+    	max_erg += values[0].indv_erg
     	print("Path before adding all elements in values: ", path)
-    	print("values: ", values)
+    	# print("values: ", values)
     	for i in np.arange(1,len(values)):
-    		path = path + "->"
-    		path = path + str(values[i])
-    	ans.append(path)
+    		path[values[i].agent] = values[i].tasks
+    		max_erg += values[i].indv_erg
+    	alloc.append(path)
+    	indv_erg.append(max_erg)
     	print("Path found: ", path)
     	values.pop()
     	return
     print(str(root.agent)+" has "+str(len(root.children))+" children!")
-    values.append(root.agent)
-    print("Values: ", values)
+    values.append(root)
+    # print("Values: ", values)
     for child in root.children:
-    	find_best_allocation(child,values,ans)
+    	find_best_allocation(child,values,alloc,indv_erg)
     values.pop()
 
  
@@ -416,31 +419,44 @@ def branch_and_bound(pbm_file, n_agents):
 		# 	print("Final agent assignments have been checked!")
 		# 	for e in explore_node:
 		# 		print(e.tasks)
-	final_allocation = find_best_allocation(root)
+	# final_allocation = find_best_allocation(root)
 
 	print("Number of nodes pruned: ", nodes_pruned)
 	total_alloc = len(generate_allocations(n_obj,n_agents))
 	print("Total number of nodes: ", total_alloc*n_agents)
 	print("Percentage of nodes pruned: ", nodes_pruned/total_alloc)
-	return final_allocation
+	return root
 
 if __name__ == "__main__":
 	pbm_file = "3_maps_example_3.pickle"
 	n_agents = 2
 
-	root = Node(0, [], [], np.inf, np.inf, [], None)
-	node = Node(1, [0,1], [], np.inf, np.inf, [], root)
-	root.children.append(node)
-
-	node2 = Node(2, [2,3], [], np.inf, np.inf, [], root)
-	root.children.append(node2)
+	root = branch_and_bound(pbm_file,n_agents)
 
 	values = []
-	ans = []
-	find_best_allocation(root,values,ans)
-	print("All paths found: ", ans)
+	alloc = []
+	indv_erg = []
+	find_best_allocation(root,values,alloc,indv_erg)
+	print("All paths found: ", alloc)
+	print("Individual ergodicities: ", indv_erg)
 
-	# final_allocation = branch_and_bound(pbm_file,n_agents)
+	#Among all the allocations found, pick the one with min max erg
+	max_erg = []
+	for e in indv_erg:
+		print("e: ", e)
+		print("len(e): ", len(e))
+		if len(e) < n_agents:
+			max_erg.append(100)
+		else:
+			max_erg.append(max(e))
+
+	print("Max ergodicities: ", max_erg)
+	min_idx = np.argmin(max_erg)
+
+	best_alloc = alloc[min_idx]
+
+	print("The best allocation according to minmax metric: ", best_alloc)
+	
 	# print("Final allocation: ", final_allocation)
 
 
