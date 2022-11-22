@@ -207,7 +207,7 @@ def traverse(node, result=[], path =[]):
 def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_file="", scalarize=False):
 
 	start_time = time.time()
-	pbm_file_complete = "./build_prob/test_cases/" + pbm_file
+	pbm_file_complete = "./build_prob/random_maps/" + pbm_file
 	problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 	n_obj = len(problem.pdfs)
 	problem.nA = 100 
@@ -237,8 +237,6 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	#Generate incumbent solution using Greedy approach
 	incumbent = greedy_alloc(problem,n_agents,n_scalar)
 	incumbent_erg = np.zeros(n_obj)
-
-	final_allocation = {}
 
 	nodes_pruned = 0
 	nodes_explored = 0
@@ -345,10 +343,15 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	traverse(root,result,path)
 	print("All paths found: ", result)
 
-	min_max = np.zeros(len(result))
+	min_max = np.ones(len(result))*100
 
 	for idx,p in enumerate(result):
 		erg = []
+		print("len: ", len(p))
+		print(p)
+		# pdb.set_trace()
+		if len(p) < n_agents:
+			continue
 		for node in p:
 			erg = erg + list(node[1])
 		print("erg: ", erg)
@@ -358,13 +361,24 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	print("Best path index: ", best_path)
 	print("Best path: ", result[best_path])
 
-	return root, problem.s0
+	best_alloc = {}
+	for idx,b in enumerate(result[best_path]):
+		best_alloc[idx] = b[0]
+
+	# title = str(result[best_path][0][0]) + str(result[best_path][1][0])
+	# pdb.set_trace()
+
+	display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(best_alloc))
+	runtime = time.time() - start_time
+
+	return best_alloc, runtime
 
 if __name__ == "__main__":
 	pbm_file = "3_maps_example_3.pickle"
 	n_agents = 2
 	n_scalar = 10
-	final_allocation = branch_and_bound(pbm_file,n_agents,n_scalar)
+	final_allocation, runtime = branch_and_bound(pbm_file,n_agents,n_scalar)
 	print("Final allocation: ", final_allocation)
+	print("Runtime: ", runtime)
 
 
