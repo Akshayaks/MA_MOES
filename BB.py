@@ -15,8 +15,9 @@ import math
 import os
 from utils import *
 from explicit_allocation import *
+import copy
 
-np.random.seed(101)
+np.random.seed(100)
 
 """"
 First find an incumbent solution using greedy approach to get an "upperd_bound". The incumbent solution
@@ -116,9 +117,12 @@ def greedy_alloc(problem, n_agents, n_scalar, node = None):
   		x_range.append((max(agent_locs[i][0]-sensor_footprint,0),min(agent_locs[i][0]+sensor_footprint,100)))
   		y_range.append((max(agent_locs[i][1]-sensor_footprint,0),min(agent_locs[i][1]+sensor_footprint,100)))
 
+  print("Number of agents: ", n_agents)
+  print("Number of objectives: ", n_obj)
+  # pdb.set_trace()
   agent_scores = np.zeros((n_agents,n_obj))
-  print(x_range)
-  print(y_range)
+  # print(x_range)
+  # print(y_range)
 
   #Calculate how much information agent 1 and agent 2 can cover when allocatted to map1 and map2 respectively and vice versa
 
@@ -127,22 +131,22 @@ def greedy_alloc(problem, n_agents, n_scalar, node = None):
   		continue
   	xr = np.arange(x_range[i][0],x_range[i][1])
   	yr = np.arange(y_range[i][0],y_range[i][1])
-  	print("agent: ", i)
-  	print(xr,yr)
+  	# print("agent: ", i)
+  	# print(xr,yr)
 
   	for p in range(n_obj):
   		if p in maps_allotted:
   			continue
-  		print("objective: ", p)
+  		# print("objective: ", p)
   		for x in xr:
   			for y in yr:
-  				print(x,y)
-  				print(problem.pdfs[p][y][x])
+  				# print(x,y)
+  				# print(problem.pdfs[p][y][x])
   				agent_scores[i][p] += problem.pdfs[p][y][x]
-  				print(agent_scores)
+  				# print(agent_scores)
   		# #pd.set_trace()
 
-  print("Agent scores: ", agent_scores)
+  # print("Agent scores: ", agent_scores)
   #pd.set_trace()
 
   maps_assigned = np.zeros(n_obj)
@@ -162,11 +166,11 @@ def greedy_alloc(problem, n_agents, n_scalar, node = None):
   				found = True
   				maps_assigned[idx] = 1 
   else:
-  	print("No > Na")
+  	# print("No > Na")
   	agents_assigned = np.zeros(n_agents)
   	for j in range(n_agents):
   		allocation[j] = []
-  	print("Allocation initialized")
+  	# print("Allocation initialized")
   	for i in range(n_obj):
   		if i in maps_allotted:
   			continue
@@ -176,8 +180,13 @@ def greedy_alloc(problem, n_agents, n_scalar, node = None):
   		found = False
   		while not found:
   			idx = [a[i] for a in agent_scores].index(erg[k])
-  			print("idx: ", idx)
-  			if agents_assigned[idx] == 2 or idx in agents_allotted:
+  			# print("idx: ", idx)
+  			#Find the bug in this line
+  			# print("agents_allotted: ", agents_allotted)
+  			# print("agent assigned[idx]: ", agents_assigned[idx])
+  			# print("n_obj-i-n_agents: ", n_obj-i-n_agents)
+  			zero_map_agents = list(agents_assigned).count(0)
+  			if (agents_assigned[idx] > 0 and n_obj-i == zero_map_agents) or idx in agents_allotted:
   				k += 1
   			else:
   				allocation[idx] = allocation[idx] + [i]
@@ -208,9 +217,9 @@ def generate_alloc_nodes(root,curr_node,n_obj,num_agents):
 		start = len(maps_left)
 	else:
 		start = 1
-	print("Maps left: ", maps_left)
-	print("start: ", start)
-	print("till: ", len(maps_left)-(num_agents-temp.depth-1))
+	# print("Maps left: ", maps_left)
+	# print("start: ", start)
+	# print("till: ", len(maps_left)-(num_agents-temp.depth-1))
 
 	for n in np.arange(start,len(maps_left)-(num_agents-temp.depth-1)+1):
 		assignments = assignments + list(itertools.combinations(maps_left, n))
@@ -280,7 +289,7 @@ def printPathsRec(root, path, pathLen):
         printArray(path, pathLen)
     else:
         # try for left and right subtree
-        print("Recursive calls to root's children!")
+        # print("Recursive calls to root's children!")
         for c in root.children:
         	printPathsRec(c, path, pathLen)
  
@@ -292,15 +301,16 @@ def printArray(ints, len):
 		print(i," ",end="")
 	print()
 
-def branch_and_bound(pbm_file, n_agents):
+def branch_and_bound(pbm_file, n_agents, start=[-1]):
 
 	start_time = time.time()
-	pbm_file_complete = "./build_prob/test_cases/" + pbm_file
+	pbm_file_complete = "/home/akshaya/MA_MOES/build_prob/instances/" + pbm_file
 	
 	problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
 	n_scalar = 10
 	n_obj = len(problem.pdfs)
+	print("number of obj: ", n_obj)
 
 	problem.nA = 100 
 	nA = problem.nA
@@ -308,17 +318,20 @@ def branch_and_bound(pbm_file, n_agents):
 	#Generate random starting positions for the agents
 	pos = np.random.uniform(0,1,2*n_agents)
 
-	problem.s0 = []
-	k = 0
-	for i in range(n_agents):
-	  problem.s0.append(pos[k])
-	  problem.s0.append(pos[k+1])
-	  problem.s0.append(0)
-	  k += 2
+	if start[0] != -1:
+		problem.s0 = start
+	else:
+		problem.s0 = []
+		k = 0
+		for i in range(n_agents):
+		  problem.s0.append(pos[k])
+		  problem.s0.append(pos[k+1])
+		  problem.s0.append(0)
+		  k += 2
 
-	problem.s0 = np.array(problem.s0)
+		problem.s0 = np.array(problem.s0)
 
-	display_map(problem,problem.s0,window=5)
+	# display_map(problem,problem.s0,window=5)
 
 	pdf_list = problem.pdfs
 
@@ -408,10 +421,10 @@ def branch_and_bound(pbm_file, n_agents):
 						break
 					node.indv_erg.append(erg)
 				if not prune:
-					print("Not pruning this node")
+					# print("Not pruning this node")
 					node.tasks = a
 					curr_node.children.append(node)
-					print("node.indv_erg: ", node.indv_erg)
+					# print("node.indv_erg: ", node.indv_erg)
 					new_explore_node.append(node)
 		explore_node = new_explore_node
 
@@ -425,13 +438,14 @@ def branch_and_bound(pbm_file, n_agents):
 	total_alloc = len(generate_allocations(n_obj,n_agents))
 	print("Total number of nodes: ", total_alloc*n_agents)
 	print("Percentage of nodes pruned: ", nodes_pruned/total_alloc)
-	return root
+	return root, problem.s0
 
-if __name__ == "__main__":
-	pbm_file = "3_maps_example_3.pickle"
-	n_agents = 2
+def branch_and_bound_main(pbm_file,n_agents,start_pos=[-1]):
+	# pbm_file = "random_map_1.pickle"
+	# n_agents = 2
 
-	root = branch_and_bound(pbm_file,n_agents)
+	print("file: ", pbm_file)
+	root, start_pos = branch_and_bound(pbm_file,n_agents,start_pos)
 
 	values = []
 	alloc = []
@@ -458,6 +472,86 @@ if __name__ == "__main__":
 	print("The best allocation according to minmax metric: ", best_alloc)
 	
 	# print("Final allocation: ", final_allocation)
+	return best_alloc,indv_erg[min_idx],start_pos
+
+if __name__ == "__main__":
+	dx = [-2,-2,-2,-2,-1,-1,-1,-1,-1,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2]
+	dy = [-1,0,1,2,-2,-1,0,1,2,-2,-1,0,1,2,-2,-1,0,1,2,-2,-1,0,1,2]
+	all_exp = []
+	cnt = 0
+	for file in os.listdir("./build_prob/instances/"):
+		print("filename: ", file)
+
+		map_start_perturb = {}
+		if not file.startswith("random"):
+			continue
+		n_agents = 2
+		best_alloc_OG, indv_erg_OG, start_pos_OG = branch_and_bound_main(file,n_agents)
+		print("best_alloc_OG: ", best_alloc_OG)
+		print("indv_erg_OG: ", indv_erg_OG)
+		print("start_pos_OG: ", start_pos_OG)
+		# pdb.set_trace()
+		map_start_perturb["0_0_0_0"] = (best_alloc_OG,indv_erg_OG)
+		print("map_start_perturb: ", map_start_perturb)
+		np.save(file.split(".")[0]+"_perturbation.npy",map_start_perturb)
+		# pdb.set_trace()
+
+		for i in range(len(dx)):
+			start_pos = copy.deepcopy(start_pos_OG)
+			start_pos[0] += dx[i]/100
+			start_pos[1] += dy[i]/100
+			print("dx,dy: ", dx[i],dy[i])
+			print("start_pos: ", start_pos)
+			# pdb.set_trace()
+			if start_pos[0] >= 0 and start_pos[0] <= 1 and start_pos[1] >= 0 and start_pos[1] <= 1:
+				best_alloc, indv_erg, _ = branch_and_bound_main(file,n_agents,start_pos)
+				print("best_alloc: ", best_alloc)
+				print("indv_erg: ", indv_erg)
+				print("start_pos: ", start_pos)
+				map_start_perturb[str(dx[i])+"_"+str(dy[i])+"0_0"] = (best_alloc,indv_erg)
+				print("map_start_perturb: ", map_start_perturb)
+				# pdb.set_trace()
+			else:
+				print("skipping this start position!")
+
+			start_pos = copy.deepcopy(start_pos_OG)
+			start_pos[3] += dx[i]/100
+			start_pos[4] += dy[i]/100
+			print("dx,dy: ", dx[i],dy[i])
+			print("start_pos: ", start_pos)
+			# pdb.set_trace()
+
+			if start_pos[3] >= 0 and start_pos[3] <= 1 and start_pos[4] >= 0 and start_pos[4] <= 1:
+				best_alloc, indv_erg, _ = branch_and_bound_main(file,n_agents,start_pos)
+				print("best_alloc: ", best_alloc)
+				print("indv_erg: ", indv_erg)
+				print("start_pos: ", start_pos)
+				map_start_perturb["0_0_"+str(dx[i])+"_"+str(dy[i])] = (best_alloc,indv_erg)
+				print("map_start_perturb: ", map_start_perturb)
+				# pdb.set_trace()
+			else:
+				print("Skipping this start position!")
+
+		np.save(file.split(".")[0]+"_perturbation_correct.npy",map_start_perturb)
+		print("outside while loop")
+
+		
+		all_exp.append(map_start_perturb)
+		# break
+
+	print("All experiment results: ", all_exp)
+	np.save("perturbation_experiment.npy",all_exp)
+
+
+
+
+
+
+
+
+
+
+
 
 
 

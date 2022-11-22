@@ -172,7 +172,7 @@ def greedy_alloc(problem, n_agents, n_scalar, node = None):
   		while not found:
   			idx = [a[i] for a in agent_scores].index(erg[k])
   			print("idx: ", idx)
-  			if agents_assigned[idx] == 2 or idx in agents_allotted:
+  			if agents_assigned[idx] == 3 or idx in agents_allotted:
   				k += 1
   			else:
   				allocation[idx] = allocation[idx] + [i]
@@ -200,35 +200,56 @@ def generate_alloc_nodes(root,curr_node,n_obj):
 	# print(assignments)
 	return assignments
 
-
+def find_best_allocation(root,values,alloc,indv_erg):
+    # list to store path
+    if root == None:
+    	return 
+    if len(root.children) == 0:
+    	print("Reached leaf node")
+    	path = {}
+    	max_erg = []
+    	values.append(root)
+    	path[values[0].agent] = values[0].tasks
+    	max_erg += values[0].indv_erg
+    	print("Path before adding all elements in values: ", path)
+    	# print("values: ", values)
+    	for i in np.arange(1,len(values)):
+    		path[values[i].agent] = values[i].tasks
+    		max_erg += values[i].indv_erg
+    	alloc.append(path)
+    	indv_erg.append(max_erg)
+    	print("Path found: ", path)
+    	values.pop()
+    	return
+    print(str(root.agent)+" has "+str(len(root.children))+" children!")
+    values.append(root)
+    # print("Values: ", values)
+    for child in root.children:
+    	find_best_allocation(child,values,alloc,indv_erg)
+    values.pop()
 
 def branch_and_bound(pbm_file, n_agents):
 
 	start_time = time.time()
-	pbm_file_complete = "./build_prob/test_cases/" + pbm_file
+	pbm_file_complete = "./build_prob/random_maps/" + pbm_file
 	
 	problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
-	n_scalar = 3
+	n_scalar = 10
 	n_obj = len(problem.pdfs)
-	# print(generate_allocations(n_obj,n_agents))
-	# #pd.set_trace()
+	if n_obj > 6:
+		print("Too many objectives: ", n_obj)
+		return [],0
 
 	problem.nA = 100 
 	nA = problem.nA
 
-	#Generate random starting positions for the agents
-	pos = np.random.uniform(0,1,2*n_agents)
+	start_pos = np.load("start_pos_random_2_agents.npy",allow_pickle=True)
 
-	problem.s0 = []
-	k = 0
-	for i in range(n_agents):
-	  problem.s0.append(pos[k])
-	  problem.s0.append(pos[k+1])
-	  problem.s0.append(0)
-	  k += 2
+	problem.s0 = start_pos.item().get(pbm_file)
+	print("Read start position as: ",problem.s0)
 
-	problem.s0 = np.array(problem.s0)
+	print("Agent start positions allotted!")
 
 	display_map(problem,problem.s0,window=5)
 
@@ -249,8 +270,11 @@ def branch_and_bound(pbm_file, n_agents):
 
 	#Find the upper bound for the incumbent solution
 	for k,v in incumbent.items():
+		pdf = np.zeros((100,100))
 		if len(v) > 1:
-			pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+			for a in v:
+			  pdf += (1/len(v))*pdf_list[a]
+			# pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
 		else:
 			pdf = pdf_list[v[0]]
 
@@ -284,18 +308,18 @@ def branch_and_bound(pbm_file, n_agents):
 		for curr_node in explore_node:
 			alloc_comb = generate_alloc_nodes(root,curr_node,n_obj)
 			print("Alloc_comb: ", alloc_comb)
-			# #pd.set_trace()
 			for a in alloc_comb:
 				print("Looking at next assignment for node: ", i)
 				print("curr_node: ", curr_node)
-				# print("Node created: ", Node(i, a, [], np.inf, np.inf, [], curr_node))
-				# #pd.set_trace()
 				node = Node(i, a, [], np.inf, np.inf, [], curr_node)
 				print("Alloc assigned: ", a)
 				# #pd.set_trace()
 				prune = False
 				if len(a) > 1:
-					pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
+					pdf = np.zeros((100,100))
+					for j in a:
+					  pdf += (1/len(a))*pdf_list[j]
+					# pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
 				else:
 					pdf = pdf_list[a[0]]
 
@@ -317,74 +341,82 @@ def branch_and_bound(pbm_file, n_agents):
 						nodes_pruned += 1 
 						continue
 					node.indv_erg.append(erg)
-				# if len(node.indv_erg) >= 1:
-				# 	node.upper = max(node.indv_erg)
-				# 	if node.upper < 0.5*upper:
-				# 		print("Deciding to fathom this node!")
-				# 		#pd.set_trace()
-				# 		potential_incum = greedy_alloc(problem,n_agents,n_scalar,node)
-
-				# 		if potential_incum != -1:
-				# 			potential_incum_erg = np.zeros(n_obj)
-
-				# 			#Find the upper bound for the incumbent solution
-				# 			for k,v in potential_incum.items():
-				# 				if len(v) == 0:
-				# 					continue
-				# 				if len(v) > 1:
-				# 					pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
-				# 				else:
-				# 					pdf = pdf_list[v[0]]
-
-				# 				pdf = jnp.asarray(pdf.flatten())
-								
-				# 				#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-				# 				control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
-								
-				# 				for p in v:
-				# 				  pdf_indv = jnp.asarray(pdf_list[p].flatten())
-				# 				  EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
-				# 				  potential_incum_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
-
-				# 			potential_upper = max(max(potential_incum_erg),node.upper)
-				# 			if potential_upper < upper:
-				# 				upper = potential_upper
-				# 			print("Updated Incumbent allocation: ", potential_incum)
-				# 			print("Updated Incumber Ergodicities: ", potential_incum_erg)
-				# 			print("Updated Upper Bound: ", upper)
-				# 			#pd.set_trace()
-
-
-				# print("Outside the assignments in a")
-				# #pd.set_trace()
+			
 				if not prune:
 					print("Not pruning this node")
 					# #pd.set_trace()
 					curr_node.children.append(node)
 					print("node.indv_erg: ", node.indv_erg)
 					new_explore_node.append(node)
-				# #pd.set_trace()
 
-		# new_explore_node = []
-		# for curr_node in explore_node:
-		# 	new_explore_node = new_explore_node + curr_node.children
 		explore_node = new_explore_node
 
 		if i == n_agents-1:
 			print("Final agent assignments have been checked!")
 			for e in explore_node:
 				print(e.tasks)
+			# pdb.set_trace()
 
 	print("Number of nodes pruned: ", nodes_pruned)
 	total_alloc = len(generate_allocations(n_obj,n_agents))
 	print("Total number of nodes: ", total_alloc)
 	print("Percentage of nodes pruned: ", nodes_pruned/total_alloc)
-	return final_allocation
+	runtime = time.time() - start_time
+	return root, problem.s0, runtime, nodes_pruned/total_alloc
 
 if __name__ == "__main__":
-	pbm_file = "3_maps_example_3.pickle"
+	# pbm_file = "3_maps_example_3.pickle"
+	# n_agents = 2
+	# final_allocation = branch_and_bound(pbm_file,n_agents)
+	# print("Final allocation: ", final_allocation)
+
+	parser = argparse.ArgumentParser()
+	# parser.add_argument('--method', type=str, required=True, help="Method to run")
+	parser.add_argument('--test_folder', type=str, required=True, help="Folder with test cases", default="./build/test_cases/")
+
+	args = parser.parse_args()
+	folder = args.test_folder
 	n_agents = 2
-	final_allocation = branch_and_bound(pbm_file,n_agents)
-	print("Final allocation: ", final_allocation)
+
+	run_times = {}
+	best_allocs = {}
+	nodes_pruned = {}
+	# start_positions = gen_start_pos(folder,2)
+	for pbm_file in os.listdir(folder):
+		root,start_pos,run_time,per_nodes_pruned = branch_and_bound(pbm_file,2)
+
+		values = []
+		alloc = []
+		indv_erg = []
+		find_best_allocation(root,values,alloc,indv_erg)
+		print("All paths found: ", alloc)
+		print("Individual ergodicities: ", indv_erg)
+
+		#Among all the allocations found, pick the one with min max erg
+		max_erg = []
+		for e in indv_erg:
+			print("e: ", e)
+			print("len(e): ", len(e))
+			if len(e) < n_agents:
+				max_erg.append(100)
+			else:
+				max_erg.append(max(e))
+
+		print("Max ergodicities: ", max_erg)
+		min_idx = np.argmin(max_erg)
+
+		best_alloc = alloc[min_idx]
+
+		print("The best allocation according to minmax metric: ", best_alloc)
+		print("Best allocation: ", best_alloc)
+		print("Runtime: ", run_time)
+		# pdb.set_trace()
+
+		run_times[pbm_file] = run_time
+		best_allocs[pbm_file] = best_alloc
+		nodes_pruned[pbm_file] = per_nodes_pruned
+		np.save("BB_random_maps_runtime_2_agents.npy", run_times)
+		np.save("Best_alloc_BB_random_maps_2_agents.npy",best_allocs)
+		np.save("nodes_pruned_BB_random_maps_2_agents.npy",nodes_pruned)
 
 
