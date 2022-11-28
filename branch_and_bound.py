@@ -210,7 +210,11 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	pbm_file_complete = "./build_prob/random_maps/" + pbm_file
 	problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 	n_obj = len(problem.pdfs)
-	problem.nA = 100 
+	problem.nA = 100
+
+	if n_obj > 6:
+		print("too many objectives")
+		return [],0,0
 	# nA = problem.nA
 
 	#Generate random starting positions or read from file
@@ -323,8 +327,11 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 					node.indv_erg.append(erg)
 					# if erg:
 					# 	node.max_erg = max(erg)
-				if not prune:
+				if node.depth == n_agents:
 					nodes_explored += 1
+				if not prune:
+					# if node.depth == n_agents:
+					# 	nodes_explored += 1
 					print("Not pruning this node")
 					# #pd.set_trace()
 					curr_node.children.append(node)
@@ -335,8 +342,10 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 
 	print("Number of nodes pruned: ", nodes_pruned)
 	print("Number of nodes explored: ", nodes_explored)
-	print("Total number of nodes: ", nodes_explored + nodes_pruned)
-	print("Percentage of nodes pruned: ", nodes_pruned/(nodes_pruned + nodes_explored))
+	alloc_comb = generate_allocations(n_obj,n_agents)
+	print("Total number of leaf nodes: ", len(alloc_comb))
+	per_leaf_prunes = (len(alloc_comb) - nodes_explored)/len(alloc_comb)
+	print("percentage of leaf nodes pruned: ", per_leaf_prunes)
 
 	result = []
 	path = []
@@ -371,7 +380,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(best_alloc))
 	runtime = time.time() - start_time
 
-	return best_alloc, runtime
+	return best_alloc, runtime, per_leaf_prunes
 
 if __name__ == "__main__":
 	pbm_file = "3_maps_example_3.pickle"
