@@ -64,7 +64,7 @@ class Node:
 	def kill(self):
 		self.alive = False    #Pruning/bounding
 
-def greedy_alloc(problem, n_agents, sensor_footprint=15,node = None):
+def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
 	#Allocate based on a circle around the agent and calculating the information in that region
 	n_obj = len(problem.pdfs)
 	agents_allotted = []
@@ -204,7 +204,25 @@ def traverse(node, result=[], path =[]):
 		path.pop()
 	return result
 
-def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_file="", scalarize=False):
+def update_upper(node,upper):
+	indv_erg = []
+	temp = node
+	while(temp):
+		print("\nAgent: ", temp.agent)
+		print("\nAssignment: ", temp.tasks)
+		print("\nIndv erg: ", temp.indv_erg)
+		indv_erg = indv_erg + temp.indv_erg
+		print("\nindv erg all: ", indv_erg)
+		temp = temp.parent
+		# pdb.set_trace()
+	print("The indv ergodicities of the entire allocations: ", indv_erg)
+	if upper > max(indv_erg):
+		print("***updating upper bound")
+		upper = max(indv_erg)
+	return upper
+
+
+def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_file="", scalarize=False,start_pos=[]):
 
 	start_time = time.time()
 	pbm_file_complete = "./build_prob/random_maps/" + pbm_file
@@ -212,10 +230,9 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	n_obj = len(problem.pdfs)
 	problem.nA = 100
 
-	if n_obj > 6:
-		print("too many objectives")
+	if n_obj > 6 or n_obj < 4:
+		print("too many or too few objectives")
 		return [],0,0
-	# nA = problem.nA
 
 	#Generate random starting positions or read from file
 	if random_start:
@@ -229,7 +246,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 			k += 2
 		problem.s0 = np.array(problem.s0)
 	else:
-		start_pos = np.load(start_pos_file,allow_pickle=True)
+		# start_pos = np.load(start_pos_file,allow_pickle=True)
 		problem.s0 = start_pos.item().get(pbm_file)
 
 	# display_map(problem,problem.s0,window=15)
@@ -239,7 +256,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	print("Agent start positions allotted!")
 
 	#Generate incumbent solution using Greedy approach
-	incumbent = greedy_alloc(problem,n_agents,n_scalar)
+	incumbent = greedy_alloc(problem,n_agents)
 	incumbent_erg = np.zeros(n_obj)
 
 	nodes_pruned = 0
@@ -279,6 +296,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 
 	# Nodes that are alive
 	explore_node = [root]
+	promise_nodes = np.zeros(n_agents)
 
 	for i in range(n_agents):
 		print("Looking at assignments for agent: ", i)
@@ -307,11 +325,13 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 				else:
 					pdf = pdf_list[a[0]]
 
+				og_pdf = pdf
 				pdf = jnp.asarray(pdf.flatten())
 
 				#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
 				control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=False)
 
+				#Can have a heuristic to show the order in which to evaluate the indv ergodicities
 				for p in a:
 					pdf_indv = jnp.asarray(pdf_list[p].flatten())
 					EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
@@ -325,18 +345,61 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 						nodes_pruned += 1 
 						continue
 					node.indv_erg.append(erg)
+					curr_node.children.append(node)
+					print("node.indv_erg: ", node.indv_erg)
 					# if erg:
 					# 	node.max_erg = max(erg)
 				if node.depth == n_agents:
 					nodes_explored += 1
+					if(node.alive):
+						print("\n******Trying to update the upper bound!")
+						print("\nparent agent: ", node.parent.agent)
+						print("\ncurre node agent: ", curr_node.agent)
+						# pdb.set_trace()
+						upper = update_upper(node,upper)
 				if not prune:
-					# if node.depth == n_agents:
-					# 	nodes_explored += 1
 					print("Not pruning this node")
-					# #pd.set_trace()
-					curr_node.children.append(node)
-					print("node.indv_erg: ", node.indv_erg)
 					new_explore_node.append(node)
+					fathom = np.random.randint(1,10)
+					score = H_function(og_pdf,problem.s0[3*i:3*i+3]) #Find how promising a node is and fathom accordingly
+					if score > promise_nodes[i] and node.depth < n_agents:
+					# if fathom > 7 and node.depth < n_agents:
+						# promise_nodes[i] = score
+						print("\nrandom fathom of node!!")
+						print("\nDepth of node: ", node.depth)
+						# pdb.set_trace()
+						new_incumbent = greedy_alloc(problem,n_agents,node)
+						new_incumbent_erg = np.zeros(n_obj)
+						print("\nGot incumbent allocation!")
+
+						#Find the upper bound for the incumbent solution
+						for k,v in new_incumbent.items():
+							if len(v) > 1:
+								if scalarize:
+									pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+								else:
+									pdf = np.zeros((100,100))
+									for a in v:
+										pdf += (1/len(v))*pdf_list[a]
+							elif len(v) == 0:
+								continue
+							else:
+								pdf = pdf_list[v[0]]
+
+							pdf = jnp.asarray(pdf.flatten())
+							
+							#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
+							control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+							
+							for p in v:
+								pdf_indv = jnp.asarray(pdf_list[p].flatten())
+								EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+								new_incumbent_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
+
+						if upper > max(new_incumbent_erg):
+							print("\n************Updating upper**************")
+							# pdb.set_trace()
+							upper = max(new_incumbent_erg)
 				# #pd.set_trace()
 		explore_node = new_explore_node
 
@@ -383,11 +446,12 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	return best_alloc, runtime, per_leaf_prunes
 
 if __name__ == "__main__":
-	pbm_file = "3_maps_example_3.pickle"
+	pbm_file = "4_maps_example_3.pickle"
 	n_agents = 2
 	n_scalar = 10
-	final_allocation, runtime = branch_and_bound(pbm_file,n_agents,n_scalar)
+	final_allocation, runtime, per_leaf_prunes = branch_and_bound(pbm_file,n_agents,n_scalar)
 	print("Final allocation: ", final_allocation)
 	print("Runtime: ", runtime)
+	print("per pruned: ", per_leaf_prunes)
 
 

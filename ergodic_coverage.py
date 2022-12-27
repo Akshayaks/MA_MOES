@@ -13,8 +13,8 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 	run ergodic coverage over a info map. Modified from Ian's code.
 	return a list of control inputs.
 	"""
-	print("****************************************************************")
-	print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
+	# print("****************************************************************")
+	# print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
 	
 	erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 	if pdf1 is not None:
@@ -27,7 +27,7 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 	# initial conditions
 	x0 = np.array(s0)
 	
-	print("Initial state of the agents: ", x0)
+	# print("Initial state of the agents: ", x0)
 	
 	u = np.zeros((nA*n_agents,2))
 	if u_init is not None:
@@ -42,7 +42,7 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 
 	if grad_criterion == True: # We want to iterate till we find a minima 
 		nIter = int(1000) # Again set a very large number of iterations
-		print("**Grad criterion activated!**")
+		# print("**Grad criterion activated!**")
 
 	i = 0
 	for i in range(nIter):
@@ -55,18 +55,18 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		if pdf1 is not None:
 			log1.append(erg_calc1.fourier_ergodic_loss(u, x0).copy())
 			log2.append(erg_calc2.fourier_ergodic_loss(u, x0).copy())
-		print("Erg: ", log[-1])
+		# print("Erg: ", log[-1])
 
 		## check for convergence
 		if grad_criterion: # at least 10 iterationss
 			if -0.01 < np.linalg.norm(g) < 0.01:
-				print("Reached grad criterion at iteration: ", i)
+				# print("Reached grad criterion at iteration: ", i)
 				# pdb.set_trace()
-				# break
+				break
 
 		elif i > 10 and stop_eps > 0: # at least 10 iterationss
 			if onp.abs(log[-1]) < stop_eps:
-				print("Reached final threshold before number of iterations!")
+				# print("Reached final threshold before number of iterations!")
 				break
 		 
 

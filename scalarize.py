@@ -21,7 +21,7 @@ def ScalarizeInfoMaps(info_maps, weights):
   if abs(np.sum(weights)-1) > 1e-6:
     sys.exit("[ERROR] ScalarizeInfoMaps, input weights do not sum to one!")
   # print("Info map: ", info_maps)
-  print("Shape of info_maps in scalarizeInfoMaps: ", len(info_maps),len(info_maps[0]))
+  # print("Shape of info_maps in scalarizeInfoMaps: ", len(info_maps),len(info_maps[0]))
   out = np.zeros(info_maps[0].shape)
   for i, info_map in enumerate(info_maps):
     out += info_map*weights[i]
@@ -50,11 +50,11 @@ def RunScalarizeMethodOnce(pbm, n_agents, w, n_basis, n_iter, ifDisplay, u_init=
   X,Y = np.meshgrid(x,y)
 
   pdf = jnp.asarray(weighted_pdf.flatten())
-  print("Shape of flattened scalarized pdf: ", pdf.shape)
-  print("Running ErgCover on map scalarized with: ", w)
-  print("Number of time steps: ", pbm.nA)
+  # print("Shape of flattened scalarized pdf: ", pdf.shape)
+  # print("Running ErgCover on map scalarized with: ", w)
+  # print("Number of time steps: ", pbm.nA)
   controls, ergs, iters = ErgCover(pdf, n_agents, pbm.nA, pbm.s0, n_basis, pbm.pix, n_iter, ifDisplay, u_init, stop_eps, kkk, grad_criterion=True)
-  print("Finished run scalarize method once")
+  # print("Finished run scalarize method once")
   return controls, ergs, iters, weighted_pdf
 
 def UniformGenerateWeights(n_weight, n_obj):
@@ -79,7 +79,7 @@ def UniformGenerateWeights_Fourier(n_weight, n_obj):
   for i in range(n_weight):
     w_list = np.array(np.random.dirichlet(np.ones(n_obj),size=1))
     out.append(w_list)
-  print("Returning fourier weight list of length: ", len(out))
+  # print("Returning fourier weight list of length: ", len(out))
   return out
 
 def ErgodicDiff(calc1,calc2):

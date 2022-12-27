@@ -9,12 +9,12 @@ import common as cm
 def main_MOES_Fourier():
   nA = 100
   n_fourier = 5
-  pbm_file = "build_prob/instances/MOES_example.pickle"
+  pbm_file = "build_prob/instances/MOES_example_rosbot.pickle"
   cm.GenMOESProblemFourier(nA,n_fourier, pbm_file)
 
 def main_MOESO2Simple(): # two-obj
   nA = 100
-  pbm_file = "build/instances/MOES-O2-peaks_pix_100_multimodal_2.pickle"
+  pbm_file = "build_prob/instances/simple_3_peaks_map.pickle"
   # # ############## Gen tests #############
   cm.GenMOESProblemO2Simple(nA, pbm_file)
 

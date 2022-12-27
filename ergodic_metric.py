@@ -11,8 +11,8 @@ from sklearn.preprocessing import normalize
 
 rob_vel = 0.8
 def fDyn(x, u): # dynamics of the robot - point mass
-	# xnew = x + np.array([np.tanh(u[0]),np.tanh(u[0]),10*u[1]])
-	xnew = x + np.array([0.8,0.8,10*u[1]])
+	xnew = x + np.array([np.tanh(u[0]),np.tanh(u[0]),10*u[1]])
+	# xnew = x + np.array([0.8,0.8,10*u[1]])
 	return xnew, x
 
 def fDiffDrive(x0, u):
@@ -26,8 +26,8 @@ def fDiffDrive(x0, u):
 	return x, x0
 
 def get_hk(k): # normalizing factor for basis function
-	_hk = (2. * k + onp.sin(2 * k))/(4. * k)
-	_hk = _hk.at[onp.isnan(_hk)].set(1.)
+	_hk = np.array((2. * k + onp.sin(2 * k))/(4. * k))
+	_hk = _hk.at[onp.isnan(_hk)].set(1.)	
 	return onp.sqrt(onp.prod(_hk))
 
 def fk(x, k): # basis function
@@ -73,8 +73,8 @@ class ErgCalc(object):
 		else: #Using this when using a window around the agent and the window is not a square
 			X,Y = np.meshgrid(np.linspace(0,1,num=self.nPix[0]),np.linspace(0,1,num=self.nPix[1]))
 		_s = np.stack([X.ravel(), Y.ravel()]).T
-		print("nPix: ", self.nPix)
-		print("Shape of vmap: ",vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k).shape)
+		# print("nPix: ", self.nPix)
+		# print("Shape of vmap: ",vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k).shape)
 		phik = np.dot(vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k), pdf) #vmap(p)(_s)
 		phik = phik/phik[0]
 		self.phik = phik/self.hk		  

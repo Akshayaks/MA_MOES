@@ -49,18 +49,26 @@ def scalarize_minmax(pdf_list, s0, nA):
 #Evaluate all combinations of allocation
 def main_run_comb_allocation(pbm_file,n_agents):
 
+  print("Problem: ", pbm_file)
   start_time = time.time()
-  pbm_file_complete = "./build_prob/test_cases/" + pbm_file
+  pbm_file_complete = "./build_prob/random_maps/" + pbm_file
   
   problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
   n_scalar = 10
   n_obj = len(problem.pdfs)
+  print("Number of objectives: ", n_obj)
+  # pdb.set_trace()
+  if n_obj > 6:
+    print("Too many objectives: ", n_obj)
+    return [],0
+  if n_obj < 4:
+    print("Too few objectives: ", n_obj)
+    return [],0
 
-  problem.nA = 100 
-  nA = problem.nA
+  problem.nA = 100
   
-  start_pos = np.load("start_pos.npy",allow_pickle=True)
+  start_pos = np.load("start_pos_random_4_agents.npy",allow_pickle=True)
 
   problem.s0 = start_pos.item().get(pbm_file)
   print("Read start position as: ",problem.s0)
@@ -81,9 +89,9 @@ def main_run_comb_allocation(pbm_file,n_agents):
     for i in range(n_agents):
       pdf = np.zeros((100,100))
       if len(alloc[i]) > 1:
-        # for a in alloc[i]:
-          # pdf += (1/len(alloc[i]))*pdf_list[a]
-        pdf = scalarize_minmax([pdf_list[a] for a in alloc[i]],problem.s0[i*3:i*3+3],problem.nA)
+        for a in alloc[i]:
+          pdf += (1/len(alloc[i]))*pdf_list[a]
+        # pdf = scalarize_minmax([pdf_list[a] for a in alloc[i]],problem.s0[i*3:i*3+3],problem.nA)
       else:
         pdf = pdf_list[alloc[i][0]]
       
@@ -602,7 +610,7 @@ def H_function(pdf,s0,h=0):
     for j in range(pdf.shape[1]):
       dist = np.sqrt((s0[0]*100 - i)**2 +  (s0[1]*100 - j)**2)
       if dist != 0:
-        wt_dist[i][j] = pdf[j][i]*dist
+        wt_dist[i][j] = pdf[j][i]/dist
   # plt.imshow(wt_dist,origin='lower')
   # plt.show()
   # plt.pause(1)
@@ -615,7 +623,7 @@ if __name__ == "__main__":
   parser.add_argument('--method', type=str, required=True, help="Method to run")
 
   args = parser.parse_args()
-  pbm_file = "4_maps_example_3.pickle"
+  pbm_file = "2_maps_example_3.pickle"
   
   if args.method == "case3":
     case_3_allocation()

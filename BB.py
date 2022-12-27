@@ -60,6 +60,7 @@ class Node:
 		self.parent = None
 		self.alive = True    #By default the node is alive (need to be explored)
 		self.depth = 0
+		self.max_erg = 0
 
 	def __init__(self, agent, tasks, indv_erg, upper, U2, children, parent):
 		self.agent = agent

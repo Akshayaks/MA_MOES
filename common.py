@@ -165,13 +165,14 @@ def GenMOESProblemFourier(nA,n_fourier, pbm_file_name):
     pix = 100
     save_dir = "/build/instances/"
 
-    mu = np.array([[0.75,0.75]])
-    cov = np.array([[[0.01, 0], [0, 0.05]]])
-    pdf1 = gaussianMixtureDistribution(1, pix, mus=mu, covs=cov)
+    mu = np.array([[0.75,0.2],[0.5,0.7],[0.2,0.8]])
+    cov = np.array([[[0.05, 0], [0, 0.05]],[[0.05, 0], [0, 0.05]],[[0.05, 0], [0, 0.05]]])
+    pdf1 = gaussianMixtureDistribution(3, pix, mus=mu, covs=cov)
 
-    mu = np.array([[0.15,0.15]])
-    cov = np.array([[[0.03, 0], [0, 0.01]]])
+    mu = np.array([[0.5,0.7]])
+    cov = np.array([[[0.05, 0], [0, 0.05]]])
     pdf2 = gaussianMixtureDistribution(1, pix, mus=mu, covs=cov)
+
     # print("pdf shape: ", pdf.shape)
     # jpdf = jnp.asarray(pdf.flatten())
 
@@ -198,9 +199,9 @@ def GenMOESProblemO2Simple(nA, pbm_file_name):
     k = 0
     save_dir = "build/instances/"
 
-    mu = np.array([[.1, .1], [.9, .9], [.1, .9],[.9,.1]])
-    cov = np.array([[[.01, 0], [0, .01]],[[.01, 0], [0, .01]],[[.01, 0], [0, .01]],[[.01, 0], [0, .01]]])
-    pdf1 = gaussianMixtureDistribution(4, pix, mus=mu, covs=cov)
+    mu = np.array([[9.0/56.0, 30.0/45.5], [13.0/56.0, 35.0/45.5], [16.0/56.0, 25.0/45.5]])
+    cov = np.array([[[.05, 0], [0, .05]],[[.05, 0], [0, .05]],[[.05, 0], [0, .05]]])
+    pdf1 = gaussianMixtureDistribution(3, pix, mus=mu, covs=cov)
 
     mu = np.array([[.6, .6],[.1, .1]])
     cov = np.array([[[.005, 0], [0, .005]],[[.005, 0], [0, .005]]])

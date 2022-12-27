@@ -4,6 +4,9 @@ import numpy as np
 from more_itertools import set_partitions
 import itertools
 import math
+import os
+import cProfile
+import re
 
 np.random.seed(100)
 
@@ -24,7 +27,7 @@ def gen_start_pos(folder, n_agents):
       s0.append(0)        #Starting orientation is always 0
       k += 2
     s0_arr[pbm_file] = np.array(s0)
-    np.save("start_pos.npy",s0_arr)
+    np.save("start_pos_random_4_agents.npy",s0_arr)
   return s0_arr
 
 def random_start_pos(n_agents):
@@ -48,6 +51,8 @@ Generates all the allovation combinations for given n_a and n_o
 def generate_allocations(n_obj,n_agents):
   objs = np.arange(0,n_obj)
   comb = list(set_partitions(objs, n_agents))
+  # print("num comb: ", len(comb))
+  # print("comb: ", comb)
   alloc_comb = []
   for c in comb:
     alloc_comb.append(list(itertools.permutations(c)))
@@ -68,7 +73,7 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
   if n_col == 1:
     n_col += 1
   n_agents = int(len(start_pos)/3)
-  print(n_agents)
+  print("Number of agents: ", n_agents)
 
   fig, axs = plt.subplots(2, n_col,figsize=(5,5))
   l = 0
@@ -76,13 +81,13 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
 
   for i in range(2):
     for j in range(n_col):
-      print(l)
+      # print(l)
       axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
       axs[i,j].set_title("Info Map "+str(l+1))
       for k in range(n_agents):
         axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
         if window:
-          w_size = window[l,k]
+          w_size = 15 #window[l,k]
           x0 = pbm.s0[k*3]*100
           y0 = pbm.s0[k*3+1]*100
           h1 = max(0,y0-w_size)
@@ -103,8 +108,8 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
       break
   if title:
     fig.suptitle(title)
-  # if pbm_file:
-    # plt.savefig("./test_cases_MOES_EEE_results/"+pbm_file+".jpg")
+  if pbm_file:
+    plt.savefig("./random_maps_MOES_results/bb_"+pbm_file+".jpg")
   # plt.show()
   return
 
@@ -140,3 +145,7 @@ def display_both(pdf,s0,h1,h2,w1,w2,pdf_zeroed,start_pos,tj,w_size):
    plt.show()
 
 
+# cProfile.run("random_start_pos(5)")
+# a = generate_allocations(6,4)
+# print("Num: ", len(a))
+# print("a: ", a)
