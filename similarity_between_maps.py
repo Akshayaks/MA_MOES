@@ -115,20 +115,22 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 
 	n_obj = len(problem.pdfs)
 	agents_allotted = []
-	maps_allotted = []
+	clusters_allotted = []
 	if node:
 		current_node = node
 		while current_node.parent:
 			agents_allotted.append(current_node.agent)
-			maps_allotted = maps_allotted + list(current_node.tasks)
+			clusters_allotted = clusters_allotted + list(current_node.cluster)
 			current_node = current_node.parent
 
-	# print("\nAgents already allotted: ", agents_allotted)
-	# print("\nMaps already assigned: ", maps_allotted)
+	print("\nAgents already allotted: ", agents_allotted)
+	print("\nMaps already assigned: ", clusters_allotted)
 	if len(agents_allotted) == n_agents:
-	# print("all agents are allotted")
+		print("all agents are allotted")
 		return -1
-	#pd.set_trace()
+	print("\nThere are some agents left to be allotted")
+	print("\nCurrent problem start positions: ", problem.s0)
+	pdb.set_trace()
 
 	sensor_footprint = 15
 	agent_locs = []
@@ -137,7 +139,8 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 			agent_locs.append((-1,-1))
 		else:
 			agent_locs.append((round(problem.s0[0+i*3]*100),round(problem.s0[1+i*3]*100)))
-	# print("Agent locations: ", agent_locs)
+	print("Agent locations: ", agent_locs)
+	pdb.set_trace()
 
 	x_range = []
 	y_range = []
@@ -153,7 +156,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 	# print("Number of agents: ", n_agents)
 	# print("Number of objectives: ", n_obj)
 	# pdb.set_trace()
-	agent_scores = np.zeros((n_agents,n_obj))
+	agent_scores = np.zeros((n_agents,len(clusters)))
 
 	#Calculate how much information each agent can get when allocatted to each map
 
@@ -165,45 +168,48 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 		# print("agent: ", i)
 		# print(xr,yr)
 
-		for p in range(n_obj):
-			if p in maps_allotted:
+		for p in range(len(clusters)):
+			if p in clusters_allotted:
 				continue
-			# print("objective: ", p)
+			print("cluster being considered: ", p)
 			for x in xr:
 				for y in yr:
 					# print(x,y)
 					# print(problem.pdfs[p][y][x])
-					agent_scores[i][p] += problem.pdfs[p][y][x]
-					# print(agent_scores)
-			# #pd.set_trace()
+					for mapi in clusters[p]:
+						agent_scores[i][p] += problem.pdfs[mapi][y][x]
+					print(agent_scores)
+			#pd.set_trace()
 
-	# print("Agent scores: ", agent_scores)
-	#pd.set_trace()
+	print("Agent scores: ", agent_scores)
+	pdb.set_trace()
 
-	maps_assigned = np.zeros(n_obj)
+	clusters_assigned = np.zeros(len(clusters))
 	allocation = {}
 
-	if n_agents >= n_obj:
+	if n_agents == len(clusters):
+		print("No = Na")
 		for i in range(n_agents):
 			k = 0
 			erg = sorted(agent_scores[i][:], reverse=True)
 			found = False
 			while not found:
 				idx = agent_scores[i].tolist().index(erg[k])
-				if maps_assigned[idx]:
+				if clusters_assigned[idx]:
 					k += 1
 				else:
 					allocation[i] = [idx]
 					found = True
-					maps_assigned[idx] = 1 
+					clusters_assigned[idx] = 1
+			print("\nClusters assigned: ", clusters_assigned) 
 	else:
-		# print("No > Na")
+		print("No > Na")
 		agents_assigned = np.zeros(n_agents)
 		for j in range(n_agents):
 			allocation[j] = []
 		# print("Allocation initialized")
 		for i in range(n_obj):
-			if i in maps_allotted:
+			if i in clusters_allotted:
 				continue
 			k = 0
 			erg = sorted([a[i] for a in agent_scores], reverse=True)
@@ -217,18 +223,18 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 				# print("agent assigned[idx]: ", agents_assigned[idx])
 				# print("n_obj-i-n_agents: ", n_obj-i-n_agents)
 				zero_map_agents = list(agents_assigned).count(0)
-				if (agents_assigned[idx] > 0 and n_obj-i == zero_map_agents) or idx in agents_allotted:
+				if (agents_assigned[idx] > 0 and len(clusters)-i == zero_map_agents) or idx in agents_allotted:
 					k += 1
 				else:
 					allocation[idx] = allocation[idx] + [i]
 					found = True
 					agents_assigned[idx] += 1
 					# print("allocation so far: ", allocation)
-	# print("The final allocations are as follows: ", allocation)
-	#pd.set_trace()
+	print("The final allocations are as follows: ", allocation)
+	pdb.set_trace()
 	return allocation
 
-def branch_and_bound(pbm, clusters, n_agents, start=[-1]):
+def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 
 	start_time = time.time()
 	n_scalar = 10
@@ -237,10 +243,11 @@ def branch_and_bound(pbm, clusters, n_agents, start=[-1]):
 
 	pdf_list = problem.pdfs
 
-	# print("Read start position as: ",problem.s0)
+	print("Read start position as: ",problem.s0)
 
 	#Generate incumbent solution using Greedy approach
 	incumbent = greedy_alloc(problem,clusters,n_agents,n_scalar)
+	print("\nGot incumbent cluster allocation!")
 
 	incumbent_erg = np.zeros(n_obj)
 
@@ -430,7 +437,7 @@ def ergodic_similarity(problem, n_scalar): #n_scalar -> num of fourier coefficie
 
 	return distance, all_dist
 
-def k_means_clustering(pdfs,k):
+def k_means_clustering(pdfs,n_agents):
 	
 	data = [pdf.flatten() for pdf in pdfs]
 	cost =[]
@@ -445,17 +452,29 @@ def k_means_clustering(pdfs,k):
 	x = np.arange(1,len(pdfs)+1)
 	kn = KneeLocator(x, cost, curve='convex', direction='decreasing')
 	print("knee: ", kn.knee)
+
+	##### For now we want the n_clusters >= n_agents ########
+	if kn.knee < n_agents:
+		print("\n*************Forcing number of clusters to be equal to number of agents!!********\n")
+		n_clusters = n_agents
+	else:
+		n_clusters = kn.knee
+
 	# plt.plot(range(1, len(pdfs)+1), cost, color ='g', linewidth ='3')
 	# plt.xlabel("Value of K")
 	# plt.ylabel("Squared Error (Cost)")
 	# plt.show() # clear the plot
-	Kmean = KMeans(n_clusters=kn.knee)
+	Kmean = KMeans(n_clusters=n_clusters)
 	Kmean.fit(data)
-	# print("\nThe cluster labels are: ", Kmean.labels_)
-	clusters = [[] for i in range(k)]
+	print("\nThe cluster labels are: ", Kmean.labels_)
+	pdb.set_trace()
+	clusters = [[] for _ in range(n_clusters)]
 	labels = Kmean.labels_
 	for idx,l in enumerate(labels):
 		clusters[l].append(idx)
+	
+	print("\nFinal clusters are: ", clusters)
+	pdb.set_trace()
 
 	return clusters
 	
@@ -469,8 +488,8 @@ if __name__ == "__main__":
 	best_allocs = {}
 
 	for file in os.listdir("build_prob/random_maps/"):
-		# if cnt == 1:
-		# 	break
+		if cnt == 10:
+			break
 		pbm_file = "build_prob/random_maps/"+file
 
 		print("\nFile: ", file)
@@ -513,14 +532,15 @@ if __name__ == "__main__":
 
 		clusters = k_means_clustering(problem.pdfs,n_agents)
 		print("The clusters are: ", clusters)
+		# pdb.set_trace()
 
-		# best_alloc_OG, indv_erg_OG, start_pos_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
-		# run_times.append(runtime)
-		# best_allocs.append(best_alloc_OG)
+		best_alloc_OG, indv_erg_OG, start_pos_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
+		run_times.append(runtime)
+		best_allocs.append(best_alloc_OG)
 
 		# file1.write(json.dumps(best_alloc_OG))
 		# file1.write("\n")
-		cnt += 1
+		# cnt += 1
 		pdb.set_trace()
 
 	file1.close()
