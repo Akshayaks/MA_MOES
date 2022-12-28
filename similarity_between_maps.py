@@ -63,16 +63,16 @@ class Node:
 	def kill(self):
 		self.alive = False    #Pruning/bounding
 
-def generate_alloc_nodes(root,curr_node,num_agents):
+def generate_alloc_nodes(root,curr_node,num_agents,clusters):
 	clusters_assigned = []
-	temp = curr_node
+	# temp = curr_node
 
 	while(curr_node):
 		clusters_assigned.append(curr_node.cluster)
 		curr_node = curr_node.parent
 	clusters_left = []
 	# print("Clusters already assigned: ", clusters_assigned)
-	for i in range(num_agents):
+	for i in range(len(clusters)):
 		if i not in clusters_assigned:
 			clusters_left.append(i)
 	# print("Clusters left to be assigned: ", clusters_left)
@@ -251,20 +251,28 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 
 	incumbent_erg = np.zeros(n_obj)
 
-	final_allocation = {}
+	# final_allocation = {}
 	nodes_pruned = 0
 
 	#Find the upper bound for the incumbent solution
 	for k,v in incumbent.items():
+		pdf = np.zeros((100,100))
+		n_maps = 0
+		for a in v:
+			for mapi in clusters[a]:
+				pdf += pdf_list[mapi]
+				n_maps += 1
+		pdf = (1/n_maps)*pdf
+
 		# print("v: ", v)
-		if len(v) > 1:
-			pdf = np.zeros((100,100))
-			length = len(pdf_list)
-			for a in v:
-				pdf += (1/length)*pdf_list[a]
-			# scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
-		else:
-			pdf = pdf_list[v[0]]
+		# if len(v) > 1:
+		# 	pdf = np.zeros((100,100))
+		# 	length = len(pdf_list)
+		# 	for a in v:
+		# 		pdf += (1/length)*pdf_list[a]
+		# 	# scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+		# else:
+		# 	pdf = pdf_list[v[0]]
 
 		pdf = np.asarray(pdf.flatten())
 		
@@ -272,21 +280,22 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 		control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 		
 		for p in v:
-			pdf_indv = np.asarray(pdf_list[p].flatten())
-			EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
-			incumbent_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
+			for mapi in clusters[p]:
+				pdf_indv = np.asarray(pdf_list[mapi].flatten())
+				EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+				incumbent_erg[mapi] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
 
 	upper = max(incumbent_erg)
-	# print("Incumbent allocation: ", incumbent)
-	# print("Incumber Ergodicities: ", incumbent_erg)
-	# print("Initial Upper: ", upper)
-	# pdb.set_trace()
+	print("Incumbent allocation: ", incumbent)
+	print("Incumber Ergodicities: ", incumbent_erg)
+	print("Initial Upper: ", upper)
+	pdb.set_trace()
 
 	#Start the tree with the root node being [], blank assignment
 	root = Node(None, [], -1, [], np.inf, np.inf, [], None)
 	# print("Added root node")
 
-	maps_assigned = np.zeros(n_obj)
+	# maps_assigned = np.zeros(n_obj)
 	explore_node = [root]
 
 	for i in range(n_agents):
@@ -294,21 +303,25 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 
 		new_explore_node = []
 		for curr_node in explore_node:
-			alloc_cluster = generate_alloc_nodes(root,curr_node,n_agents)
+			alloc_cluster = generate_alloc_nodes(root,curr_node,n_agents,clusters)
 			# print("Alloc_cluster: ", alloc_cluster)
 			# pdb.set_trace()
 			for a in alloc_cluster:
-				# print("Looking at next assignment for node: ", i)
-				# print("Parent assignment: ", curr_node.tasks)
-				# print("Assignment cluster: ", a)
-				# print("Assignment maps: ", clusters[a[0]])
-				# print("Nodes pruned so far: ", nodes_pruned)
-				# pdb.set_trace()
+				print("Looking at next assignment for node: ", i)
+				print("Parent assignment: ", curr_node.cluster)
+				print("Assignment cluster: ", a)
+				print("Assignment maps: ", clusters[a[0]])
+				print("Nodes pruned so far: ", nodes_pruned)
+				pdb.set_trace()
 				node = Node(i, clusters[a[0]], a[0], [], np.inf, np.inf, [], curr_node)
 				prune = False
 				if len(clusters[a[0]]) > 1:
 					# print("Scalarizing map for JTO")
-					pdf = scalarize_minmax([pdf_list[j] for j in clusters[a[0]]],problem.s0[i*3:i*3+3],problem.nA)
+					# pdf = scalarize_minmax([pdf_list[j] for j in clusters[a[0]]],problem.s0[i*3:i*3+3],problem.nA)
+					pdf = np.zeros((100,100))
+					for mapi in clusters[a[0]]:
+						pdf += pdf_list[mapi]
+					pdf = (1/len(clusters[a[0]]))*pdf
 				else:
 					# print("SA ES")
 					pdf = pdf_list[clusters[a[0]][0]]
@@ -322,21 +335,22 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 					pdf_indv = np.asarray(pdf_list[p].flatten())
 					EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
 					erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
-					# print("erg: ", erg)
-					# #pd.set_trace()
+					print("erg: ", erg)
+					pdb.set_trace()
 					if erg > upper:
 						node.alive = False
 						prune = True
-						# print("Don't explore further")
-						# pdb.set_trace()
+						print("Don't explore further")
+						pdb.set_trace()
 						nodes_pruned += 1 
 						break
 					node.indv_erg.append(erg)
 				if not prune:
-					# print("Not pruning this node")
+					print("Not pruning this node")
 					node.tasks = a
 					curr_node.children.append(node)
-					# print("node.indv_erg: ", node.indv_erg)
+					print("node.indv_erg: ", node.indv_erg)
+					pdb.set_trace()
 					new_explore_node.append(node)
 		explore_node = new_explore_node
 
