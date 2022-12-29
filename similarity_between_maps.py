@@ -130,7 +130,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 		return -1
 	print("\nThere are some agents left to be allotted")
 	print("\nCurrent problem start positions: ", problem.s0)
-	pdb.set_trace()
+	# pdb.set_trace()
 
 	sensor_footprint = 15
 	agent_locs = []
@@ -140,7 +140,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 		else:
 			agent_locs.append((round(problem.s0[0+i*3]*100),round(problem.s0[1+i*3]*100)))
 	print("Agent locations: ", agent_locs)
-	pdb.set_trace()
+	# pdb.set_trace()
 
 	x_range = []
 	y_range = []
@@ -182,7 +182,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 			#pd.set_trace()
 
 	print("Agent scores: ", agent_scores)
-	pdb.set_trace()
+	# pdb.set_trace()
 
 	clusters_assigned = np.zeros(len(clusters))
 	allocation = {}
@@ -231,7 +231,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 					agents_assigned[idx] += 1
 					# print("allocation so far: ", allocation)
 	print("The final allocations are as follows: ", allocation)
-	pdb.set_trace()
+	# pdb.set_trace()
 	return allocation
 
 def branch_and_bound(problem, clusters, n_agents, start=[-1]):
@@ -289,7 +289,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 	print("Incumbent allocation: ", incumbent)
 	print("Incumber Ergodicities: ", incumbent_erg)
 	print("Initial Upper: ", upper)
-	pdb.set_trace()
+	# pdb.set_trace()
 
 	#Start the tree with the root node being [], blank assignment
 	root = Node(None, [], -1, [], np.inf, np.inf, [], None)
@@ -312,7 +312,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 				print("Assignment cluster: ", a)
 				print("Assignment maps: ", clusters[a[0]])
 				print("Nodes pruned so far: ", nodes_pruned)
-				pdb.set_trace()
+				# pdb.set_trace()
 				node = Node(i, clusters[a[0]], a[0], [], np.inf, np.inf, [], curr_node)
 				prune = False
 				if len(clusters[a[0]]) > 1:
@@ -336,12 +336,12 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 					EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
 					erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
 					print("erg: ", erg)
-					pdb.set_trace()
+					# pdb.set_trace()
 					if erg > upper:
 						node.alive = False
 						prune = True
 						print("Don't explore further")
-						pdb.set_trace()
+						# pdb.set_trace()
 						nodes_pruned += 1 
 						break
 					node.indv_erg.append(erg)
@@ -350,7 +350,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 					node.tasks = a
 					curr_node.children.append(node)
 					print("node.indv_erg: ", node.indv_erg)
-					pdb.set_trace()
+					# pdb.set_trace()
 					new_explore_node.append(node)
 		explore_node = new_explore_node
 
@@ -481,14 +481,14 @@ def k_means_clustering(pdfs,n_agents):
 	Kmean = KMeans(n_clusters=n_clusters)
 	Kmean.fit(data)
 	print("\nThe cluster labels are: ", Kmean.labels_)
-	pdb.set_trace()
+	# pdb.set_trace()
 	clusters = [[] for _ in range(n_clusters)]
 	labels = Kmean.labels_
 	for idx,l in enumerate(labels):
 		clusters[l].append(idx)
 	
 	print("\nFinal clusters are: ", clusters)
-	pdb.set_trace()
+	# pdb.set_trace()
 
 	return clusters
 	
@@ -502,8 +502,8 @@ if __name__ == "__main__":
 	best_allocs = {}
 
 	for file in os.listdir("build_prob/random_maps/"):
-		if cnt == 10:
-			break
+		# if cnt == 2:
+		# 	break
 		pbm_file = "build_prob/random_maps/"+file
 
 		print("\nFile: ", file)
@@ -549,13 +549,28 @@ if __name__ == "__main__":
 		# pdb.set_trace()
 
 		best_alloc_OG, indv_erg_OG, start_pos_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
-		run_times.append(runtime)
-		best_allocs.append(best_alloc_OG)
+		for i in range(n_agents):
+			if i in best_alloc_OG.keys():
+				best_alloc_OG[i] = clusters[best_alloc_OG[i][0]]
+		
+		print("\nBest allocation is: ", best_alloc_OG)
+		
+		run_times[file] = runtime
+		best_allocs[file] = best_alloc_OG
 
-		# file1.write(json.dumps(best_alloc_OG))
-		# file1.write("\n")
-		# cnt += 1
-		pdb.set_trace()
+		file1.write(file)
+		file1.write("\n")
+		file1.write(json.dumps(best_alloc_OG))
+		file1.write("\n")
+		file1.write("clusters: ")
+		for c in clusters:
+			for ci in c:
+				file1.write(str(ci))
+				file1.write(", ")
+			file1.write("; ")
+		file1.write("\n")
+		cnt += 1
+		# pdb.set_trace()
 
 	file1.close()
 
