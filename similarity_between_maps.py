@@ -558,6 +558,8 @@ if __name__ == "__main__":
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG
 
+		np.save("BB_similarity_clustering_runtime_4_agents.npy", run_times)
+
 		file1.write(file)
 		file1.write("\n")
 		file1.write(json.dumps(best_alloc_OG))
