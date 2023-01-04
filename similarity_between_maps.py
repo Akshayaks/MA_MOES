@@ -178,7 +178,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 					# print(problem.pdfs[p][y][x])
 					for mapi in clusters[p]:
 						agent_scores[i][p] += problem.pdfs[mapi][y][x]
-					print(agent_scores)
+					# print(agent_scores)
 			#pd.set_trace()
 
 	print("Agent scores: ", agent_scores)
@@ -208,7 +208,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 		for j in range(n_agents):
 			allocation[j] = []
 		# print("Allocation initialized")
-		for i in range(n_obj):
+		for i in range(len(clusters)):
 			if i in clusters_allotted:
 				continue
 			k = 0
@@ -316,14 +316,14 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 				node = Node(i, clusters[a[0]], a[0], [], np.inf, np.inf, [], curr_node)
 				prune = False
 				if len(clusters[a[0]]) > 1:
-					# print("Scalarizing map for JTO")
+					print("Scalarizing map for JTO")
 					# pdf = scalarize_minmax([pdf_list[j] for j in clusters[a[0]]],problem.s0[i*3:i*3+3],problem.nA)
 					pdf = np.zeros((100,100))
 					for mapi in clusters[a[0]]:
 						pdf += pdf_list[mapi]
 					pdf = (1/len(clusters[a[0]]))*pdf
 				else:
-					# print("SA ES")
+					print("SA ES")
 					pdf = pdf_list[clusters[a[0]][0]]
 
 				pdf = np.asarray(pdf.flatten())
@@ -376,13 +376,15 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	find_best_allocation(root,values,alloc,indv_erg)
 	print("All paths found: ", alloc)
 	print("Individual ergodicities: ", indv_erg)
+	print("Number of agents: ", n_agents)
+	pdb.set_trace()
 
 	#Among all the allocations found, pick the one with min max erg
 	max_erg = []
-	for e in indv_erg:
+	for idx,e in enumerate(indv_erg):
 		# print("e: ", e)
 		# print("len(e): ", len(e))
-		if len(e) < n_agents:
+		if len(alloc[idx]) < n_agents+1:
 			max_erg.append(100)
 		else:
 			max_erg.append(max(e))
@@ -393,7 +395,7 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	best_alloc = alloc[min_idx]
 
 	print("The best allocation according to minmax metric: ", best_alloc)
-	
+	pdb.set_trace()
 	# print("Final allocation: ", final_allocation)
 	runtime = time.time() - start_time
 	return best_alloc,indv_erg[min_idx],start_pos,runtime
@@ -468,11 +470,14 @@ def k_means_clustering(pdfs,n_agents):
 	print("knee: ", kn.knee)
 
 	##### For now we want the n_clusters >= n_agents ########
-	if kn.knee < n_agents:
-		print("\n*************Forcing number of clusters to be equal to number of agents!!********\n")
-		n_clusters = n_agents
+	if kn.knee:
+		if kn.knee < n_agents:
+			print("\n*************Forcing number of clusters to be equal to number of agents!!********\n")
+			n_clusters = n_agents
+		else:
+			n_clusters = kn.knee
 	else:
-		n_clusters = kn.knee
+		n_clusters = n_agents
 
 	# plt.plot(range(1, len(pdfs)+1), cost, color ='g', linewidth ='3')
 	# plt.xlabel("Value of K")
@@ -502,8 +507,8 @@ if __name__ == "__main__":
 	best_allocs = {}
 
 	for file in os.listdir("build_prob/random_maps/"):
-		# if cnt == 2:
-		# 	break
+		if cnt == 2:
+			break
 		pbm_file = "build_prob/random_maps/"+file
 
 		print("\nFile: ", file)
@@ -558,21 +563,21 @@ if __name__ == "__main__":
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG
 
-		np.save("BB_similarity_clustering_runtime_4_agents.npy", run_times)
+		# np.save("BB_similarity_clustering_runtime_4_agents.npy", run_times)
 
-		file1.write(file)
-		file1.write("\n")
-		file1.write(json.dumps(best_alloc_OG))
-		file1.write("\n")
-		file1.write("clusters: ")
-		for c in clusters:
-			for ci in c:
-				file1.write(str(ci))
-				file1.write(", ")
-			file1.write("; ")
-		file1.write("\n")
+		# file1.write(file)
+		# file1.write("\n")
+		# file1.write(json.dumps(best_alloc_OG))
+		# file1.write("\n")
+		# file1.write("clusters: ")
+		# for c in clusters:
+		# 	for ci in c:
+		# 		file1.write(str(ci))
+		# 		file1.write(", ")
+		# 	file1.write("; ")
+		# file1.write("\n")
 		cnt += 1
-		# pdb.set_trace()
+		pdb.set_trace()
 
 	file1.close()
 
