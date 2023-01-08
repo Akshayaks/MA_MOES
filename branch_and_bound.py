@@ -65,7 +65,8 @@ class Node:
 		self.alive = False    #Pruning/bounding
 
 def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
-	#Allocate based on a circle around the agent and calculating the information in that region
+	#Allocate based on information in a window centered around the agent
+
 	n_obj = len(problem.pdfs)
 	agents_allotted = []
 	maps_allotted = []
@@ -78,8 +79,9 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
 
 	# print("\nAgents already allotted: ", agents_allotted)
 	# print("\nMaps already assigned: ", maps_allotted)
+
 	if len(agents_allotted) == n_agents:
-		# print("all agents are allotted")
+		print("all agents are allotted")
 		return -1
 
 	agent_locs = []
@@ -88,34 +90,27 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
 			agent_locs.append((-1,-1))
 		else:
 			agent_locs.append((round(problem.s0[0+i*3]*100),round(problem.s0[1+i*3]*100)))
-	# print("Agent locations: ", agent_locs)
-
-	x_range = []
-	y_range = []
-
-	for i in range(n_agents):
-		if i in agents_allotted:
-			x_range.append((-1,-1))
-			y_range.append((-1,-1))
-		else:
-			x_range.append((max(agent_locs[i][0]-sensor_footprint,0),min(agent_locs[i][0]+sensor_footprint,100)))
-			y_range.append((max(agent_locs[i][1]-sensor_footprint,0),min(agent_locs[i][1]+sensor_footprint,100)))
 
 	agent_scores = np.zeros((n_agents,n_obj))
 
-	#Calculate how much information agent 1 and agent 2 can cover when allocatted to map1 and map2 respectively and vice versa
+	# Calculate how much information agent i gets when allotted map p
 
 	for i in range(n_agents):
 		if i in agents_allotted:
 			continue
-		xr = np.arange(x_range[i][0],x_range[i][1])
-		yr = np.arange(y_range[i][0],y_range[i][1])
-		# print("agent: ", i)
+
+		x_min = max(agent_locs[i][0]-sensor_footprint,0)
+		x_max = min(agent_locs[i][0]+sensor_footprint,100)
+
+		y_min = max(agent_locs[i][1]-sensor_footprint,0)
+		y_max = min(agent_locs[i][1]+sensor_footprint,100)
+
+		xr = np.arange(x_min,x_max)
+		yr = np.arange(y_min,y_max)
 
 		for p in range(n_obj):
 			if p in maps_allotted:
 				continue
-			# print("objective: ", p)
 			for x in xr:
 				for y in yr:
 					agent_scores[i][p] += problem.pdfs[p][y][x]
@@ -141,24 +136,25 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
 	else:
 		print("No >= Na")
 		agents_assigned = np.zeros(n_agents)
+		
 		for j in range(n_agents):
 			allocation[j] = []
-		# print("Allocation initialized to empty list")
+		
 		for i in range(n_obj):
 			# print("Checking for map: ", i)
 			if i in maps_allotted:
 				continue
 			k = 0
 
-			#Sort the amount of information on a map for different agents in descending order
-			# print("Agent scores for chosen map: ", [a[i] for a in agent_scores])
-			info = sorted([a[i] for a in agent_scores], reverse=True) 
+			# Sort the amount of information on a map for different agents in descending order
+
+			map_scores = [a[i] for a in agent_scores]
+			info = sorted(map_scores, reverse=True) 
 			found = False
 			while not found:
-				idx = [a[i] for a in agent_scores].index(info[k])
-				# print("Agent with max info : ", idx)
+				idx = map_scores.index(info[k]) # Free agent with max info on this map
 
-				#Capping the maximum number of maps that can be assigned to an agent to ensure to agent is left without maps
+				#Capping the maximum number of maps that can be assigned to an agent to ensure no agent is left without maps
 				if (agents_assigned[idx] > 0 and np.count_nonzero(agents_assigned == 0) == n_obj - sum(agents_assigned)) or idx in agents_allotted:
 					# print("Agent is already assigned max possible maps")
 					k += 1
@@ -249,17 +245,17 @@ def find_best_allocation(root,values,alloc,indv_erg):
 		find_best_allocation(child,values,alloc,indv_erg)
 	values.pop()
 
-def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_file="", scalarize=False,start_pos=[]):
+def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True, scalarize=False):
 
 	start_time = time.time()
 	pbm_file_complete = "./build_prob/random_maps/" + pbm_file
 	problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
-	# print("Loaded map!")
+
 	n_obj = len(problem.pdfs)
 	problem.nA = 100
 
-	if n_obj < 4:
-		print("too many or too few objectives")
+	if n_obj < n_agents or n_obj > 7:
+		print("No < Na")
 		return [],0,0,0
 
 	#Generate random starting positions or read from file
@@ -274,7 +270,6 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 			k += 2
 		problem.s0 = np.array(problem.s0)
 	else:
-		# start_pos = np.load(start_pos_file,allow_pickle=True)
 		problem.s0 = start_pos.item().get(pbm_file)
 
 	# display_map(problem,problem.s0,window=15)
@@ -304,9 +299,10 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 
 		pdf = jnp.asarray(pdf.flatten())
 		
-		#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
+		# Just run ergodicity optimization for fixed iterations to get ergodic trajectory 
 		control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 		
+		# Calculate individual ergodicities using the gotten trajectory
 		for p in v:
 			pdf_indv = jnp.asarray(pdf_list[p].flatten())
 			EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
@@ -322,61 +318,79 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	root = Node(None, [], [], np.inf, np.inf, [], None)
 	print("Added root node")
 
-	# Nodes that are alive
+	# Nodes that are alive or not pruned
 	explore_node = [root]
 	promise_nodes = np.zeros(n_agents)
 
 	for i in range(n_agents):
 		print("Looking at assignments for agent: ", i)
-		#pd.set_trace()
+		agent_map_erg = {}
+		#pbd.set_trace()
 		new_explore_node = []
 		for curr_node in explore_node:
 			alloc_comb = generate_alloc_nodes(curr_node,n_obj,n_agents)
 			print("Alloc_comb: ", alloc_comb)
-			#pdb.set_trace()
+			# pdb.set_trace()
 			for a in alloc_comb:
 				print("Looking at next possible assignment for agent: ", i)
-				print("curr_node: ", curr_node)
-				# print("Node created: ", Node(i, a, [], np.inf, np.inf, [], curr_node))
-				# #pd.set_trace()
+				print("Parent Node allocation: ", curr_node.tasks)
+				
 				node = Node(i, a, [], np.inf, np.inf, [], curr_node)
 				print("Alloc assigned: ", a)
-				# #pd.set_trace()
+				
 				prune = False
-				if len(a) > 1:
-					if scalarize:
-						pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
+
+				if a not in agent_map_erg.keys():
+					agent_map_erg[a] = []
+					if len(a) > 1:
+						if scalarize:
+							pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
+						else:
+							pdf = np.zeros((100,100))
+							for j in a:
+								pdf += (1/len(a))*pdf_list[j]
 					else:
-						pdf = np.zeros((100,100))
-						for j in a:
-							pdf += (1/len(a))*pdf_list[j]
+						pdf = pdf_list[a[0]]
+
+					og_pdf = pdf
+					pdf = jnp.asarray(pdf.flatten())
+
+					#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
+					control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=False)
+
+					#Can have a heuristic to show the order in which to evaluate the indv ergodicities
+					for p in a:
+						pdf_indv = jnp.asarray(pdf_list[p].flatten())
+						EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+						erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
+						agent_map_erg[a].append(erg)
+						print("erg: ", erg)
+						# #pd.set_trace()
+						if erg > upper:
+							node.alive = False
+							prune = True
+							print("Don't explore further")
+							nodes_pruned += 1 
+							continue
+						node.indv_erg.append(erg)
+						curr_node.children.append(node)
+						print("node.indv_erg: ", node.indv_erg)
+						# if erg:
+						# 	node.max_erg = max(erg)
 				else:
-					pdf = pdf_list[a[0]]
+					print("\nAlready saw this allocation!")
+					# pdb.set_trace()
+					for e in agent_map_erg[a]:
+						if e > upper:
+							node.alive = False
+							prune = True
+							print("Don't explore further")
+							nodes_pruned += 1 
+							continue
+						node.indv_erg.append(e)
+						curr_node.children.append(node)
+						print("node.indv_erg: ", node.indv_erg)
 
-				og_pdf = pdf
-				pdf = jnp.asarray(pdf.flatten())
-
-				#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-				control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=False)
-
-				#Can have a heuristic to show the order in which to evaluate the indv ergodicities
-				for p in a:
-					pdf_indv = jnp.asarray(pdf_list[p].flatten())
-					EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
-					erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
-					print("erg: ", erg)
-					# #pd.set_trace()
-					if erg > upper:
-						node.alive = False
-						prune = True
-						print("Don't explore further")
-						nodes_pruned += 1 
-						continue
-					node.indv_erg.append(erg)
-					curr_node.children.append(node)
-					print("node.indv_erg: ", node.indv_erg)
-					# if erg:
-					# 	node.max_erg = max(erg)
 				if node.depth == n_agents:
 					nodes_explored += 1
 					if(node.alive):
@@ -437,6 +451,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	print("Total number of leaf nodes: ", len(alloc_comb))
 	per_leaf_prunes = (len(alloc_comb) - nodes_explored)/len(alloc_comb)
 	print("percentage of leaf nodes pruned: ", per_leaf_prunes)
+	# pdb.set_trace()
 
 	# result = []
 	# path = []
