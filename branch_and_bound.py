@@ -221,18 +221,46 @@ def update_upper(node,upper):
 		upper = max(indv_erg)
 	return upper
 
+def find_best_allocation(root,values,alloc,indv_erg):
+	# list to store path
+	if root == None:
+		return 
+	if len(root.children) == 0:
+		# print("Reached leaf node")
+		path = {}
+		max_erg = []
+		values.append(root)
+		path[values[0].agent] = values[0].tasks
+		max_erg += values[0].indv_erg
+		# print("Path before adding all elements in values: ", path)
+		# print("values: ", values)
+		for i in np.arange(1,len(values)):
+			path[values[i].agent] = values[i].tasks
+			max_erg += values[i].indv_erg
+		alloc.append(path)
+		indv_erg.append(max_erg)
+		# print("Path found: ", path)
+		values.pop()
+		return
+	# print(str(root.agent)+" has "+str(len(root.children))+" children!")
+	values.append(root)
+	# print("Values: ", values)
+	for child in root.children:
+		find_best_allocation(child,values,alloc,indv_erg)
+	values.pop()
 
 def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_file="", scalarize=False,start_pos=[]):
 
 	start_time = time.time()
 	pbm_file_complete = "./build_prob/random_maps/" + pbm_file
 	problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
+	# print("Loaded map!")
 	n_obj = len(problem.pdfs)
 	problem.nA = 100
 
-	if n_obj > 6 or n_obj < 4:
+	if n_obj < 4:
 		print("too many or too few objectives")
-		return [],0,0
+		return [],0,0,0
 
 	#Generate random starting positions or read from file
 	if random_start:
@@ -410,40 +438,70 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, random_start=True, start_pos_
 	per_leaf_prunes = (len(alloc_comb) - nodes_explored)/len(alloc_comb)
 	print("percentage of leaf nodes pruned: ", per_leaf_prunes)
 
-	result = []
-	path = []
-	traverse(root,result,path)
-	print("All paths found: ", result)
+	# result = []
+	# path = []
+	# traverse(root,result,path)
+	# print("All paths found: ", result)
 
-	min_max = np.ones(len(result))*100
+	# min_max = np.ones(len(result))*100
 
-	for idx,p in enumerate(result):
-		erg = []
-		print("len: ", len(p))
-		print(p)
-		# pdb.set_trace()
-		if len(p) < n_agents:
-			continue
-		for node in p:
-			erg = erg + list(node[1])
-		print("erg: ", erg)
-		min_max[idx] = min(erg)
-	print("minmax: ", min_max)
-	best_path =  np.argmin(min_max)
-	print("Best path index: ", best_path)
-	print("Best path: ", result[best_path])
+	# for idx,p in enumerate(result):
+	# 	erg = []
+	# 	print("len: ", len(p))
+	# 	print(p)
+	# 	# pdb.set_trace()
+	# 	if len(p) < n_agents:
+	# 		continue
+	# 	for node in p:
+	# 		erg = erg + list(node[1])
+	# 	print("erg: ", erg)
+	# 	min_max[idx] = min(erg)
+	# print("minmax: ", min_max)
+	# best_path =  np.argmin(min_max)
+	# print("Best path index: ", best_path)
+	# print("Best path: ", result[best_path])
 
-	best_alloc = {}
-	for idx,b in enumerate(result[best_path]):
-		best_alloc[idx] = b[0]
+	# best_alloc = {}
+	# for idx,b in enumerate(result[best_path]):
+	# 	best_alloc[idx] = b[0]
 
-	# title = str(result[best_path][0][0]) + str(result[best_path][1][0])
+	# # title = str(result[best_path][0][0]) + str(result[best_path][1][0])
+	# # pdb.set_trace()
+
+	# display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(best_alloc))
+	# runtime = time.time() - start_time
+
+	values = []
+	alloc = []
+	indv_erg = []
+	find_best_allocation(root,values,alloc,indv_erg)
+	print("All paths found: ", alloc)
+	print("Individual ergodicities: ", indv_erg)
+	print("Number of agents: ", n_agents)
 	# pdb.set_trace()
 
-	display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(best_alloc))
-	runtime = time.time() - start_time
+	#Among all the allocations found, pick the one with min max erg
+	max_erg = []
+	for idx,e in enumerate(indv_erg):
+		# print("e: ", e)
+		# print("len(e): ", len(e))
+		if len(alloc[idx]) < n_agents+1:
+			max_erg.append(100)
+		else:
+			max_erg.append(max(e))
 
-	return best_alloc, runtime, per_leaf_prunes
+	print("Max ergodicities: ", max_erg)
+	min_idx = np.argmin(max_erg)
+
+	best_alloc = alloc[min_idx]
+
+	print("The best allocation according to minmax metric: ", best_alloc)
+	# pdb.set_trace()
+	# print("Final allocation: ", final_allocation)
+	runtime = time.time() - start_time
+	return best_alloc,runtime,per_leaf_prunes,indv_erg[min_idx]
+
+	# return best_alloc, runtime, per_leaf_prunes
 
 if __name__ == "__main__":
 	pbm_file = "4_maps_example_3.pickle"

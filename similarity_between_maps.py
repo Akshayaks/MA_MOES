@@ -377,7 +377,7 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	print("All paths found: ", alloc)
 	print("Individual ergodicities: ", indv_erg)
 	print("Number of agents: ", n_agents)
-	pdb.set_trace()
+	# pdb.set_trace()
 
 	#Among all the allocations found, pick the one with min max erg
 	max_erg = []
@@ -395,7 +395,7 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	best_alloc = alloc[min_idx]
 
 	print("The best allocation according to minmax metric: ", best_alloc)
-	pdb.set_trace()
+	# pdb.set_trace()
 	# print("Final allocation: ", final_allocation)
 	runtime = time.time() - start_time
 	return best_alloc,indv_erg[min_idx],start_pos,runtime
@@ -505,10 +505,11 @@ if __name__ == "__main__":
 	file1 = open("similarity_based_BandB.txt","w")
 	run_times = {}
 	best_allocs = {}
+	indv_erg_best = {}
 
 	for file in os.listdir("build_prob/random_maps/"):
-		if cnt == 2:
-			break
+		# if cnt == 2:
+		# 	break
 		pbm_file = "build_prob/random_maps/"+file
 
 		print("\nFile: ", file)
@@ -562,22 +563,25 @@ if __name__ == "__main__":
 		
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG
+		indv_erg_best[file] = indv_erg_OG
 
-		# np.save("BB_similarity_clustering_runtime_4_agents.npy", run_times)
+		np.save("BB_similarity_clustering_runtime_4_agents2.npy", run_times)
+		np.save("BB_similarity_custering_best_alloc_4_agents.npy", best_allocs)
+		np.save("BB_similarity_clustering_indv_erg_4_agents.npy", indv_erg_best)
 
-		# file1.write(file)
-		# file1.write("\n")
-		# file1.write(json.dumps(best_alloc_OG))
-		# file1.write("\n")
-		# file1.write("clusters: ")
-		# for c in clusters:
-		# 	for ci in c:
-		# 		file1.write(str(ci))
-		# 		file1.write(", ")
-		# 	file1.write("; ")
-		# file1.write("\n")
+		file1.write(file)
+		file1.write("\n")
+		file1.write(json.dumps(best_alloc_OG))
+		file1.write("\n")
+		file1.write("clusters: ")
+		for c in clusters:
+			for ci in c:
+				file1.write(str(ci))
+				file1.write(", ")
+			file1.write("; ")
+		file1.write("\n")
 		cnt += 1
-		pdb.set_trace()
+		# pdb.set_trace()
 
 	file1.close()
 
