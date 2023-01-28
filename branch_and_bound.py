@@ -254,19 +254,20 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 	n_obj = len(problem.pdfs)
 	problem.nA = 100
 
-	if n_obj < n_agents or n_obj > 7:
+	if n_obj < n_agents or n_obj > 6:
 		print("No < Na")
 		return [],0,0,0
 
 	#Generate random starting positions or read from file
 	if random_start:
 		pos = np.random.uniform(0,1,2*n_agents)
+		theta = np.random.uniform(0,2*np.pi,n_agents)
 		problem.s0 = []
 		k = 0
 		for i in range(n_agents):
 			problem.s0.append(pos[k])
 			problem.s0.append(pos[k+1])
-			problem.s0.append(0)
+			problem.s0.append(theta[i])
 			k += 2
 		problem.s0 = np.array(problem.s0)
 	else:
@@ -356,7 +357,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 					pdf = jnp.asarray(pdf.flatten())
 
 					#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-					control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=False)
+					control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
 					#Can have a heuristic to show the order in which to evaluate the indv ergodicities
 					for p in a:
@@ -404,15 +405,15 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 					new_explore_node.append(node)
 					fathom = np.random.randint(1,10)
 					score = H_function(og_pdf,problem.s0[3*i:3*i+3]) #Find how promising a node is and fathom accordingly
-					if score > promise_nodes[i] and node.depth < n_agents:
-					# if fathom > 7 and node.depth < n_agents:
-						# promise_nodes[i] = score
+					# if score > promise_nodes[i] and node.depth < n_agents:
+					if fathom > 7 and node.depth < n_agents:
+						promise_nodes[i] = score
 						print("\nrandom fathom of node!!")
 						print("\nDepth of node: ", node.depth)
 						# pdb.set_trace()
 						new_incumbent = greedy_alloc(problem,n_agents,node)
 						new_incumbent_erg = np.zeros(n_obj)
-						print("\nGot incumbent allocation!")
+						print("\nGot greedy allocation!")
 
 						#Find the upper bound for the incumbent solution
 						for k,v in new_incumbent.items():
@@ -442,6 +443,8 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 							print("\n************Updating upper**************")
 							# pdb.set_trace()
 							upper = max(new_incumbent_erg)
+						else:
+							print("\n**Upper bound not updated***")
 				# #pd.set_trace()
 		explore_node = new_explore_node
 
@@ -518,13 +521,13 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 
 	# return best_alloc, runtime, per_leaf_prunes
 
-if __name__ == "__main__":
-	pbm_file = "4_maps_example_3.pickle"
-	n_agents = 2
-	n_scalar = 10
-	final_allocation, runtime, per_leaf_prunes = branch_and_bound(pbm_file,n_agents,n_scalar)
-	print("Final allocation: ", final_allocation)
-	print("Runtime: ", runtime)
-	print("per pruned: ", per_leaf_prunes)
+# if __name__ == "__main__":
+# 	pbm_file = "4_maps_example_3.pickle"
+# 	n_agents = 2
+# 	n_scalar = 10
+# 	final_allocation, runtime, per_leaf_prunes = branch_and_bound(pbm_file,n_agents,n_scalar)
+# 	print("Final allocation: ", final_allocation)
+# 	print("Runtime: ", runtime)
+# 	print("per pruned: ", per_leaf_prunes)
 
 
