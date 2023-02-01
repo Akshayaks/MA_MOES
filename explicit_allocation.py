@@ -9,8 +9,8 @@ import pdb
 import copy
 import ergodic_metric
 
-from scipy.ndimage.filters import maximum_filter
-from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
+# from scipy.ndimage.filters import maximum_filter
+# from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 from scipy.stats import wasserstein_distance
 
 import argparse
@@ -47,7 +47,7 @@ def scalarize_minmax(pdf_list, s0, nA):
 
 
 #Evaluate all combinations of allocation
-def main_run_comb_allocation(pbm_file,n_agents):
+def main_run_comb_allocation(pbm_file,n_agents,start_pos_file):
 
   print("Problem: ", pbm_file)
   start_time = time.time()
@@ -59,16 +59,16 @@ def main_run_comb_allocation(pbm_file,n_agents):
   n_obj = len(problem.pdfs)
   print("Number of objectives: ", n_obj)
   # pdb.set_trace()
-  if n_obj > 6:
+  if n_obj > 4:
     print("Too many objectives: ", n_obj)
-    return [],0
+    return [],0,[]
   if n_obj < 4:
     print("Too few objectives: ", n_obj)
-    return [],0
+    return [],0,[]
 
   problem.nA = 100
   
-  start_pos = np.load("start_pos_random_4_agents.npy",allow_pickle=True)
+  start_pos = np.load(start_pos_file,allow_pickle=True)
 
   problem.s0 = start_pos.item().get(pbm_file)
   print("Read start position as: ",problem.s0)
@@ -76,16 +76,15 @@ def main_run_comb_allocation(pbm_file,n_agents):
   print("Agent start positions allotted!")
 
   alloc_comb = generate_allocations(n_obj,n_agents)
-  print(alloc_comb)
+  print("\nNumber of combinations to check: ", len(alloc_comb))
   # pdb.set_trace()
 
   erg_mat = np.zeros((len(alloc_comb),n_obj))   #For each allocation, we want the individual ergodicities
 
   pdf_list = problem.pdfs
-  trajectory = []
 
   for idx,alloc in enumerate(alloc_comb):
-    print(alloc)
+    # print(alloc)
     for i in range(n_agents):
       pdf = np.zeros((100,100))
       if len(alloc[i]) > 1:
@@ -96,10 +95,10 @@ def main_run_comb_allocation(pbm_file,n_agents):
         pdf = pdf_list[alloc[i][0]]
       
       pdf = jnp.asarray(pdf.flatten())
-      print(problem.s0)
+      # print(problem.s0)
       
       #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-      control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=False)
+      control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
       
       for p in alloc[i]:
         pdf_indv = jnp.asarray(pdf_list[p].flatten())
@@ -112,11 +111,11 @@ def main_run_comb_allocation(pbm_file,n_agents):
   for i in range(len(alloc_comb)):
     max_array.append(max(erg_mat[i][:]))
   best_alloc = np.argmin(max_array)
-  print(erg_mat)
+  # print(erg_mat)
 
-  display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(alloc_comb[best_alloc]))
+  # display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(alloc_comb[best_alloc]))
   
-  return best_alloc,runtime
+  return alloc_comb[best_alloc],runtime,erg_mat[best_alloc][:]
 
 #Evaluate only select combinations of allocation
 def main_run_comb_with_heuristics(pbm_file,n_agents,percent_ignored):

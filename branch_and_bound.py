@@ -77,9 +77,6 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
 			maps_allotted = maps_allotted + list(current_node.tasks)
 			current_node = current_node.parent
 
-	# print("\nAgents already allotted: ", agents_allotted)
-	# print("\nMaps already assigned: ", maps_allotted)
-
 	if len(agents_allotted) == n_agents:
 		print("all agents are allotted")
 		return -1
@@ -115,54 +112,31 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
 				for y in yr:
 					agent_scores[i][p] += problem.pdfs[p][y][x]
 
-	# print("Agent scores: ", agent_scores)
+	allocation = {new_list: [] for new_list in range(n_agents)}
 
-	maps_assigned = np.zeros(n_obj)
-	allocation = {}
+	agents_assigned = np.zeros(n_agents)
+	
+	for i in range(n_obj):
+		if i in maps_allotted:
+			continue
+		k = 0
 
-	if n_agents > n_obj:
-		for i in range(n_agents):
-			k = 0
-			erg = sorted(agent_scores[i][:], reverse=True)
-			found = False
-			while not found:
-				idx = agent_scores[i].tolist().index(erg[k])
-				if maps_assigned[idx]:
-					k += 1
-				else:
-					allocation[i] = [idx]
-					found = True
-					maps_assigned[idx] = 1 
-	else:
-		print("No >= Na")
-		agents_assigned = np.zeros(n_agents)
+		# Sort the amount of information on a map for different agents in descending order
+
+		map_scores = [a[i] for a in agent_scores]
+		info = sorted(map_scores, reverse=True) 
+		found = False
+		while not found:
+			idx = map_scores.index(info[k]) # Free agent with max info on this map
+
+			#Capping the maximum number of maps that can be assigned to an agent to ensure no agent is left without maps
+			if (agents_assigned[idx] > 0 and np.count_nonzero(agents_assigned == 0) == n_obj - sum(agents_assigned)) or idx in agents_allotted:
+				k += 1
+			else:
+				allocation[idx] = allocation[idx] + [i]
+				found = True
+				agents_assigned[idx] += 1
 		
-		for j in range(n_agents):
-			allocation[j] = []
-		
-		for i in range(n_obj):
-			# print("Checking for map: ", i)
-			if i in maps_allotted:
-				continue
-			k = 0
-
-			# Sort the amount of information on a map for different agents in descending order
-
-			map_scores = [a[i] for a in agent_scores]
-			info = sorted(map_scores, reverse=True) 
-			found = False
-			while not found:
-				idx = map_scores.index(info[k]) # Free agent with max info on this map
-
-				#Capping the maximum number of maps that can be assigned to an agent to ensure no agent is left without maps
-				if (agents_assigned[idx] > 0 and np.count_nonzero(agents_assigned == 0) == n_obj - sum(agents_assigned)) or idx in agents_allotted:
-					# print("Agent is already assigned max possible maps")
-					k += 1
-				else:
-					allocation[idx] = allocation[idx] + [i]
-					found = True
-					agents_assigned[idx] += 1
-					# print("allocation so far: ", allocation)
 	print("Incumbent allocation: ", allocation)
 	return allocation
 
@@ -172,10 +146,10 @@ def generate_alloc_nodes(curr_node,n_obj,n_agents):
 	while(curr_node):
 		maps_assigned = maps_assigned + list(curr_node.tasks)
 		curr_node = curr_node.parent
-	maps_left = []
-	for i in range(n_obj):
-		if i not in maps_assigned:
-			maps_left.append(i)
+	maps_left = list(set(np.arange(1,n_obj+1)) - set(maps_assigned))
+	# for i in range(n_obj):
+	# 	if i not in maps_assigned:
+	# 		maps_left.append(i)
 	assignments = []
 	if temp.depth+1 == n_agents:
 		start = len(maps_left)
@@ -248,13 +222,13 @@ def find_best_allocation(root,values,alloc,indv_erg):
 def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True, scalarize=False):
 
 	start_time = time.time()
-	pbm_file_complete = "./build_prob/random_maps/" + pbm_file
+	pbm_file_complete = "./build_prob/random_maps_20/" + pbm_file
 	problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
 	n_obj = len(problem.pdfs)
 	problem.nA = 100
 
-	if n_obj < n_agents or n_obj > 6:
+	if n_obj < n_agents:
 		print("No < Na")
 		return [],0,0,0
 
@@ -330,8 +304,8 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 		new_explore_node = []
 		for curr_node in explore_node:
 			alloc_comb = generate_alloc_nodes(curr_node,n_obj,n_agents)
-			print("Alloc_comb: ", alloc_comb)
-			# pdb.set_trace()
+			print("Alloc_comb: ", len(alloc_comb))
+			pdb.set_trace()
 			for a in alloc_comb:
 				print("Looking at next possible assignment for agent: ", i)
 				print("Parent Node allocation: ", curr_node.tasks)
@@ -404,10 +378,10 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 					print("Not pruning this node")
 					new_explore_node.append(node)
 					fathom = np.random.randint(1,10)
-					score = H_function(og_pdf,problem.s0[3*i:3*i+3]) #Find how promising a node is and fathom accordingly
+					# score = H_function(og_pdf,problem.s0[3*i:3*i+3]) #Find how promising a node is and fathom accordingly
 					# if score > promise_nodes[i] and node.depth < n_agents:
 					if fathom > 7 and node.depth < n_agents:
-						promise_nodes[i] = score
+						# promise_nodes[i] = score
 						print("\nrandom fathom of node!!")
 						print("\nDepth of node: ", node.depth)
 						# pdb.set_trace()
@@ -521,13 +495,15 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 
 	# return best_alloc, runtime, per_leaf_prunes
 
-# if __name__ == "__main__":
-# 	pbm_file = "4_maps_example_3.pickle"
-# 	n_agents = 2
-# 	n_scalar = 10
-# 	final_allocation, runtime, per_leaf_prunes = branch_and_bound(pbm_file,n_agents,n_scalar)
-# 	print("Final allocation: ", final_allocation)
-# 	print("Runtime: ", runtime)
-# 	print("per pruned: ", per_leaf_prunes)
+if __name__ == "__main__":
+	pbm_file = "random_map_0.pickle"
+	n_agents = 10
+	n_scalar = 10
+	start_pos_file = "start_pos_random_10_agents.npy"
+	start_pos = np.load(start_pos_file,allow_pickle=True)
+	final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(pbm_file,n_agents,n_scalar,start_pos)
+	print("Final allocation: ", final_allocation)
+	print("Runtime: ", runtime)
+	print("per pruned: ", per_leaf_prunes)
 
 

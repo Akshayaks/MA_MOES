@@ -170,8 +170,8 @@ def display_both(pdf,s0,h1,h2,w1,w2,pdf_zeroed,start_pos,tj,w_size):
 
 
 # cProfile.run("random_start_pos(5)")
-# a = generate_allocations(6,4)
-# print("Num: ", len(a))
+a = generate_allocations(12,4)
+print("Num: ", len(a))
 # print("a: ", a)
 
-gen_start_pos("./build_prob/random_maps/",4)
+# gen_start_pos("./build_prob/random_maps/",4)

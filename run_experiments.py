@@ -26,6 +26,9 @@ def run_exp_bb(folder,start_pos_file,n_agents):
 		# if pbm_file in already_done.keys():
 		# 	continue
 
+		# if pbm_file != "random_map_28.pickle":
+		# 	continue
+
 		best_alloc,run_time,per_pruned,indv_erg = branch_and_bound(pbm_file, n_agents, 10, start_pos, random_start=False, scalarize=False)
 		print("Best allocation: ", best_alloc)
 		print("Runtime: ", run_time)
@@ -34,24 +37,28 @@ def run_exp_bb(folder,start_pos_file,n_agents):
 		per_leaf_prunes[pbm_file] = per_pruned
 		indv_erg_best[pbm_file] = indv_erg
 
-		# np.save("BB_improved3_random_maps_runtime_4_agents2.npy", run_times)
+		# np.save("BB_improved3_random_maps_runtime_4_agents.npy", run_times)
 		# np.save("Best_alloc_BB_improved3_random_maps_4_agents.npy",best_allocs)
 		# np.save("per_leaf_pruned_improved3_random_maps_4_agents.npy",per_leaf_prunes)
-		# np.save("BB_improved3_random_maps_indv_erg_4_agents.npy", run_times)
+		# np.save("BB_improved3_random_maps_indv_erg_4_agents.npy", indv_erg_best)
 
 
-def run_exp_moes(folder):
+def run_exp_moes(folder,start_pos_file,n_agents):
 	run_times = {}
 	best_allocs = {}
+	indv_ergs = {}
 	# start_positions = gen_start_pos(folder,4)
 	for pbm_file in os.listdir(folder):
-		best_alloc,run_time = main_run_comb_allocation(pbm_file,4)
+		best_alloc, run_time, indv_erg = main_run_comb_allocation(pbm_file,n_agents,start_pos_file)
 		print("Best allocation: ", best_alloc)
 		print("Runtime: ", run_time)
 		run_times[pbm_file] = run_time
 		best_allocs[pbm_file] = best_alloc
-		np.save("MOES_random_maps_runtime_4_agents.npy", run_times)
-		np.save("Best_alloc_MOES_random_maps_4_agents.npy",best_allocs)
+		indv_ergs[pbm_file] = indv_erg
+		# np.save("Exhaustive_random_maps_runtime_4_agents.npy", run_times)
+		# np.save("Exhaustive_random_maps_best_alloc_4_agents.npy",best_allocs)
+		# np.save("Exhaustive_random_maps_indv_erg_4_agents.npy",indv_ergs)
+		# pdb.set_trace()
 
 	print("Average runtime of exhaustive MOES: ",sum(run_times)/len(run_times))
 	print("Runtimes: ", run_times)
@@ -122,7 +129,7 @@ if __name__ == "__main__":
 
 	if method == "MOES":
 		# gen_start_pos(folder,2)
-		run_exp_moes(folder)
+		run_exp_moes(folder,start_pos,n_agents)
 	elif method == "window":
 		run_exp_win(folder)
 	elif method == "BB":
