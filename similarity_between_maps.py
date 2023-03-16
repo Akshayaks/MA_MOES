@@ -466,12 +466,20 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 		final_trajectories.append(tj)
 	print(final_trajectories)
 	print(len(pbm.pdfs))
-	# pbm_final = pbm
-	# pbm_final.pdfs = final_pdfs
+	pbm_final = pbm
+	pbm_final.pdfs = final_pdfs
 	# pdb.set_trace()
-	# display_map(pbm_final,pbm_final.s0,pbm_file=None,tj=final_trajectories,window=None,r=None,title=None)
+	display_map(pbm_final,pbm_final.s0,pbm_file=None,tj=final_trajectories,window=None,r=None,title=None)
 	traj = [final_trajectories[2],final_trajectories[0],final_trajectories[1],final_trajectories[2],final_trajectories[0]]
 	display_map(pbm,pbm.s0,pbm_file=None,tj=traj,window=None,r=None,title=None)
+	plt.plot(final_trajectories[0][:,0]*100,final_trajectories[0][:,1]*100,color="red",linewidth=2)
+	plt.plot(final_trajectories[1][:,0]*100,final_trajectories[1][:,1]*100,color="blue",linewidth=2)
+	plt.plot(final_trajectories[2][:,0]*100,final_trajectories[2][:,1]*100,color="green",linewidth=2)
+	plt.plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=5, markerfacecolor="red", markeredgecolor="red")
+	plt.plot(pbm.s0[1*3]*100,pbm.s0[1*3+1]*100, marker="o", markersize=5, markerfacecolor="blue", markeredgecolor="blue")
+	plt.plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=5, markerfacecolor="green", markeredgecolor="green")
+	plt.show()
+	# (plt.plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=5, markerfacecolor="green", markeredgecolor="green"))
 	# print("Final allocation: ", final_allocation)
 	runtime = time.time() - start_time
 	return best_alloc,indv_erg[min_idx],start_pos,runtime

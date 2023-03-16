@@ -205,7 +205,7 @@ if __name__ == "__main__":
     n_scalar = 10
     cnt = 0
 
-    file1 = open("distance_allocate_3_agents.txt","w")
+    # file1 = open("distance_allocate_3_agents.txt","w")
     run_times = {}
     best_allocs = {}
     indv_erg_best = {}
@@ -216,13 +216,20 @@ if __name__ == "__main__":
 
         print("\nFile: ", file)
 
+        # if file != "random_map_28.pickle":
+        #      continue
+
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
+
 
         if len(problem.pdfs) < n_agents:
             continue
 
         start_pos = np.load("start_pos_random_3_agents.npy",allow_pickle=True)
         problem.s0 = start_pos.item().get(file)
+
+        print(problem.s0)
+        display_map(problem,problem.s0)
 
         if len(problem.pdfs) == n_agents:
             clusters = [[i] for i in range(n_agents)]
@@ -255,14 +262,14 @@ if __name__ == "__main__":
                  px = n_peaks[0]*1
                  py = n_peaks[1]*1
                  peak_centers[i] = (px,py)
-            # fig, axs = plt.subplots(1,2,figsize=(5,5))
-            # axs[0].imshow(pdf)
-            # axs[1].imshow(peaks)
+            fig, axs = plt.subplots(1,2,figsize=(5,5))
+            axs[0].imshow(pdf)
+            axs[1].imshow(peaks)
             
-            # for ai in range(n_agents):
-            #     print("start: ", problem.s0[ai*3]*100, problem.s0[ai*3+1]*100)
-            #     axs[0].plot(problem.s0[ai*3]*100,problem.s0[ai*3+1]*100, marker="o", markersize=5, markerfacecolor='red', markeredgecolor='black')
-            # plt.show()
+            for ai in range(n_agents):
+                print("start: ", problem.s0[ai*3]*100, problem.s0[ai*3+1]*100)
+                axs[0].plot(problem.s0[ai*3]*100,problem.s0[ai*3+1]*100, marker="o", markersize=5, markerfacecolor='red', markeredgecolor='black')
+            plt.show()
             # print("\nPeak coordinate: ", px, py)
             # pdb.set_trace()
         print("\nClusters peak coordinates: ", peak_centers)
@@ -315,30 +322,41 @@ if __name__ == "__main__":
         print("Incumber Ergodicities: ", incumbent_erg)
         print("Initial Upper: ", upper)
         
-        print("\nBest allocation is: ", incumbent)
-        print("\nBest Individual ergodicity: ", incumbent_erg)
         
+
+        best_alloc = {}
+        for i in range(n_agents):
+            best_alloc[i] = []
+        
+        for i in range(n_agents):
+            for c in incumbent[i]:
+                best_alloc[i] = best_alloc[i] + clusters[c]
+
+        print("\nBest allocation is: ", best_alloc)
+        print("\nBest Individual ergodicity: ", incumbent_erg)            
+        # pdb.set_trace()
+
         run_times[file] = time.time() - start_time
-        best_allocs[file] = incumbent
+        best_allocs[file] = best_alloc
         indv_erg_best[file] = incumbent_erg
 
-        np.save("dist_3_agents.npy", run_times)
-        np.save("dist_3_agents.npy", best_allocs)
-        np.save("dist_3_agents.npy", indv_erg_best)
+        # np.save("dist_3_agents_runtime.npy", run_times)
+        # np.save("dist_3_agents_best_alloc.npy", best_allocs)
+        # np.save("dist_3_agents_indv_erg.npy", indv_erg_best)
 
-        file1.write(file)
-        file1.write("\n")
-        file1.write(json.dumps(incumbent))
-        file1.write("\n")
-        file1.write("clusters: ")
-        for c in clusters:
-            for ci in c:
-                file1.write(str(ci))
-                file1.write(", ")
-            file1.write("; ")
-        file1.write("\n")
+    #     file1.write(file)
+    #     file1.write("\n")
+    #     file1.write(json.dumps(incumbent))
+    #     file1.write("\n")
+    #     file1.write("clusters: ")
+    #     for c in clusters:
+    #         for ci in c:
+    #             file1.write(str(ci))
+    #             file1.write(", ")
+    #         file1.write("; ")
+    #     file1.write("\n")
 
-    file1.close()
+    # file1.close()
 
 
 

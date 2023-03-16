@@ -12,12 +12,14 @@ import ergodic_metric
 # from scipy.ndimage.filters import maximum_filter
 # from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 from scipy.stats import wasserstein_distance
+from distributions import gaussianMixtureDistribution
 
 import argparse
 import time
 import math
 import os
 from utils import *
+import random
 
 '''
 Generate the pareto front using MOES and pick the best weight to scalarize maps
@@ -420,19 +422,42 @@ def main_run_win_alloc(pbm_file,n_agents,crop=False):
   return best_alloc,runtime
 
 def case_3_allocation():
-  n_agents = 5
-  n_obj = 2 
+  n_agents = 10
+  # n_obj = 2 
 
-  pbm_file = "build_prob/instances/MOES-O2-peaks_pix_100_multimodal.pickle"
+  # pbm_file = "build_prob/instances/MOES-O2-peaks_pix_100_multimodal.pickle"
+  pbm_file = "build_prob/random_maps/random_map_28.pickle"
   
   problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
+
+  problem.s0 = random_start_pos(n_agents)
+  
+  uniform_dist = np.ones((100,100))*0.0001
+  almost_uniform = uniform_dist
+  almost_uniform[2][2] = 0
+  almost_uniform[2][3] = 0.0002
+
+  for _ in range(1):
+    n_peaks = random.randint(1,6)
+    m = []
+    c = []
+    for j in range(n_peaks):
+        m.append([random.randint(5,80)/100,random.randint(5,80)/100])
+        c.append([[random.randint(6,7)/100,0],[0,random.randint(6,7)/100]])
+    mu = np.array(m)
+    cov = np.array(c)
+    pdf = gaussianMixtureDistribution(n_peaks, 100, mus=mu, covs=cov)
+
+  problem.pdfs = [pdf,problem.pdfs[0]]
+
+  display_map(problem, problem.s0)
 
   n_scalar = 10
 
   problem.nA = 100 
-  nA = problem.nA
+  # nA = problem.nA
 
-  problem.s0 = random_start_pos(n_agents)
+  # problem.s0 = random_start_pos(n_agents)
 
   print("Agent start positions allotted!")
 
@@ -440,15 +465,27 @@ def case_3_allocation():
   
   pdf_list = problem.pdfs
   was_dist = []
-  uniform_dist = (np.ones((100,100))*0.0001).flatten()
+
+  # print("Distance to close to uniform distributions: ", wasserstein_distance(almost_uniform.flatten(),uniform_dist.flatten()))
+  # pdb.set_trace()
 
   for pdf in pdf_list:
-    was_dist.append(1/wasserstein_distance(pdf.flatten(),uniform_dist))
+    was_dist.append(wasserstein_distance(pdf.flatten(),uniform_dist.flatten()))
 
   n_agents_allotted = []
+  total = sum(was_dist)
   for i in range(len(was_dist)):
-    was_dist[i] = was_dist[i]/sum(was_dist)
-    n_agents_allotted.append(math.floor(was_dist[i]*n_agents))
+    was_dist[i] = was_dist[i]/total
+  
+  was_dist_inverse = []
+  for i in range(len(was_dist)):
+    was_dist_inverse.append(1/was_dist[i])
+  
+  total = sum(was_dist_inverse)
+  
+  for i in range(len(was_dist)):
+    was_dist_inverse[i] = was_dist_inverse[i]/total
+    n_agents_allotted.append(math.floor(was_dist_inverse[i]*n_agents))
 
   print("Earth mover distance for all the maps: ", was_dist)
   print("Number of agents allotted to each map: ", n_agents_allotted)

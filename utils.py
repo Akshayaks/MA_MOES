@@ -28,7 +28,7 @@ def gen_start_pos(folder, n_agents):
       s0.append(theta[i])        #Starting orientation is always 0
       k += 2
     s0_arr[pbm_file] = np.array(s0)
-    np.save("start_pos_ang_random_4_agents.npy",s0_arr)
+    np.save("start_pos_ang_random_10_agents.npy",s0_arr)
   return s0_arr
 
 def random_start_pos(n_agents):
@@ -80,7 +80,7 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
 
   fig, axs = plt.subplots(2, n_col,figsize=(5,5))
   l = 0
-  colors = ["green","red","yellow","blue","cyan","magento","#eeefff","#ffa500","#a020f0","#ffc0cb"]
+  color = ["green","red","yellow","blue","cyan","#ee00ff","#ffa500","#a020f0","#ffc0cb","#007ccc"]
   colors = ["red", "blue", "green"]
 
   for i in range(2):
@@ -89,18 +89,19 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
       axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
       axs[i,j].set_title("Info Map "+str(l+1))
       for k in range(n_agents):
-        if l == 0:
-          axs[i,j].plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[2], markeredgecolor=colors[2])
-        elif l == 1:
-          axs[i,j].plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[0], markeredgecolor=colors[0])
-        elif l == 2:
-          axs[i,j].plot(pbm.s0[1*3]*100,pbm.s0[1*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[1], markeredgecolor=colors[1])
-        elif l == 3:
-          axs[i,j].plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[2], markeredgecolor=colors[2])
-        elif l == 4:
-          axs[i,j].plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[0], markeredgecolor=colors[0])
-        # axs[i,j].plot(pbm.s0[l*3]*100,pbm.s0[l*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[l], markeredgecolor=colors[l])
         # axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
+        # if l == 1:
+        #   axs[i,j].plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[2], markeredgecolor=colors[2])
+        # elif l == 2:
+        #   axs[i,j].plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[0], markeredgecolor=colors[0])
+        # elif l == 0:
+        #   axs[i,j].plot(pbm.s0[1*3]*100,pbm.s0[1*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[1], markeredgecolor=colors[1])
+        # elif l == 3:
+        #   axs[i,j].plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[2], markeredgecolor=colors[2])
+        # elif l == 4:
+        #   axs[i,j].plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[0], markeredgecolor=colors[0])
+        # axs[i,j].plot(pbm.s0[l*3]*100,pbm.s0[l*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[l], markeredgecolor=colors[l])
+        axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=color[k], markeredgecolor=color[k])
         if window:
           w_size = 15 #window[l,k]
           x0 = pbm.s0[k*3]*100
@@ -116,15 +117,15 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
                            lw = 1) )
         if tj != None:
           if l == 0:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,linestyle="dashed",color="green")
+            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2) #green
           elif l == 1:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,linestyle="dashed",color="red")
+            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="blue",linewidth=2) #red
           elif l == 2:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,linestyle="dashed",color="blue")
+            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2) #blue
           elif l == 3:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,linestyle="dashed",color="green")
+            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2)
           else:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,linestyle="dashed",color="red")
+            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2)
       l += 1
       if l == n_obj:
         break
@@ -170,8 +171,8 @@ def display_both(pdf,s0,h1,h2,w1,w2,pdf_zeroed,start_pos,tj,w_size):
 
 
 # cProfile.run("random_start_pos(5)")
-a = generate_allocations(12,4)
-print("Num: ", len(a))
+# a = generate_allocations(12,4)
+# print("Num: ", len(a))
 # print("a: ", a)
 
-# gen_start_pos("./build_prob/random_maps/",4)
+gen_start_pos("./build_prob/random_maps_20/",10)
