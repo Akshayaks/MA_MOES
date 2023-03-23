@@ -235,6 +235,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 
     start_time = time.time()
     pbm_file_complete = "./build_prob/random_maps/" + pbm_file
+    # pbm_file_complete = pbm_file
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
     n_obj = len(problem.pdfs)
@@ -474,13 +475,23 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 
 if __name__ == "__main__":
     pbm_file = "random_map_28.pickle"
-    n_agents = 3
+    n_agents = 4
     n_scalar = 10
-    start_pos = np.load("./start_pos_random_3_agents.npy",allow_pickle=True)
+    start_pos = np.load("./start_pos_ang_random_4_agents.npy",allow_pickle=True)
+    for file in os.listdir("build_prob/random_maps/"):
+        pbm_file = "build_prob/random_maps/"+file
+        print("\nFile: ", pbm_file)
+        problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-    final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(pbm_file,n_agents,n_scalar,start_pos,random_start=False, scalarize=False)
-    print("Final allocation: ", final_allocation)
-    print("Runtime: ", runtime)
-    print("per pruned: ", per_leaf_prunes)
+        if len(problem.pdfs) < 4 or len(problem.pdfs) > 7:
+            continue
+
+
+        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False, scalarize=False)
+        print("file: ", file)
+        print("Final allocation: ", final_allocation)
+        print("Runtime: ", runtime)
+        print("per pruned: ", per_leaf_prunes)
+        pdb.set_trace()
 
 

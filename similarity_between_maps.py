@@ -446,7 +446,7 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	best_alloc = alloc[min_idx]
 
 	print("The best allocation according to minmax metric: ", best_alloc)
-	pdb.set_trace()
+	# pdb.set_trace()
 	final_pdfs = []
 	final_trajectories = []
 	for i in range(n_agents):
@@ -469,16 +469,16 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	pbm_final = pbm
 	pbm_final.pdfs = final_pdfs
 	# pdb.set_trace()
-	display_map(pbm_final,pbm_final.s0,pbm_file=None,tj=final_trajectories,window=None,r=None,title=None)
+	# display_map(pbm_final,pbm_final.s0,pbm_file=None,tj=final_trajectories,window=None,r=None,title=None)
 	traj = [final_trajectories[2],final_trajectories[0],final_trajectories[1],final_trajectories[2],final_trajectories[0]]
-	display_map(pbm,pbm.s0,pbm_file=None,tj=traj,window=None,r=None,title=None)
-	plt.plot(final_trajectories[0][:,0]*100,final_trajectories[0][:,1]*100,color="red",linewidth=2)
-	plt.plot(final_trajectories[1][:,0]*100,final_trajectories[1][:,1]*100,color="blue",linewidth=2)
-	plt.plot(final_trajectories[2][:,0]*100,final_trajectories[2][:,1]*100,color="green",linewidth=2)
-	plt.plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=5, markerfacecolor="red", markeredgecolor="red")
-	plt.plot(pbm.s0[1*3]*100,pbm.s0[1*3+1]*100, marker="o", markersize=5, markerfacecolor="blue", markeredgecolor="blue")
-	plt.plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=5, markerfacecolor="green", markeredgecolor="green")
-	plt.show()
+	# display_map(pbm,pbm.s0,pbm_file=None,tj=traj,window=None,r=None,title=None)
+	# plt.plot(final_trajectories[0][:,0]*100,final_trajectories[0][:,1]*100,color="red",linewidth=2)
+	# plt.plot(final_trajectories[1][:,0]*100,final_trajectories[1][:,1]*100,color="blue",linewidth=2)
+	# plt.plot(final_trajectories[2][:,0]*100,final_trajectories[2][:,1]*100,color="green",linewidth=2)
+	# plt.plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=5, markerfacecolor="red", markeredgecolor="red")
+	# plt.plot(pbm.s0[1*3]*100,pbm.s0[1*3+1]*100, marker="o", markersize=5, markerfacecolor="blue", markeredgecolor="blue")
+	# plt.plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=5, markerfacecolor="green", markeredgecolor="green")
+	# plt.show()
 	# (plt.plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=5, markerfacecolor="green", markeredgecolor="green"))
 	# print("Final allocation: ", final_allocation)
 	runtime = time.time() - start_time
@@ -545,10 +545,15 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 	# n_scalar = 10
 	for pdf in pdfs:
 		EC = ergodic_metric.ErgCalc(pdf.flatten(),1,pbm.nA,n_scalar,pbm.pix)
-		data.append(EC.phik)
+		# FC = EC.phik
+		# print("FC: ", EC.phik)
+		# print("Lamda: ", EC.lamk)
+		# print("Product: ", EC.phik*EC.lamk**2)
+		# pdb.set_trace()
+		data.append((EC.phik*EC.lamk))
 	cost =[]
 	for i in range(1, len(pdfs)+1):
-		KM = KMeans(n_clusters = i, max_iter = 500)
+		KM = KMeans(n_clusters = i, max_iter = 1500)
 		KM.fit(data)
 		# calculates squared error
 		# for the clustered points
@@ -556,7 +561,7 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 		print("\nCost for this clustering: ", cost)
 		#plot the cost against K values
 	x = np.arange(1,len(pdfs)+1)
-	kn = KneeLocator(x, cost, curve='convex', direction='decreasing')
+	kn = KneeLocator(x, cost, curve='convex', direction='decreasing', online=True, S=1)
 	print("knee: ", kn.knee)
 
 	##### For now we want the n_clusters >= n_agents ########
@@ -576,7 +581,7 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 	Kmean = KMeans(n_clusters=n_clusters)
 	Kmean.fit(data)
 	print("\nThe cluster labels are: ", Kmean.labels_)
-	# pdb.set_trace()
+	pdb.set_trace()
 	clusters = [[] for _ in range(n_clusters)]
 	labels = Kmean.labels_
 	for idx,l in enumerate(labels):
@@ -588,7 +593,7 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 	return clusters
 	
 if __name__ == "__main__":
-	n_agents = 3
+	n_agents = 4
 	n_scalar = 10
 	cnt = 0
 
@@ -596,6 +601,9 @@ if __name__ == "__main__":
 	run_times = {}
 	best_allocs = {}
 	indv_erg_best = {}
+
+	best_alloc = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
+	best_alloc = best_alloc.ravel()[0]
 
 	for file in os.listdir("build_prob/random_maps/"):
 		# if cnt == 2:
@@ -605,15 +613,15 @@ if __name__ == "__main__":
 		print("\nFile: ", file)
 		# pdb.set_trace()
 
-		if file != "random_map_28.pickle":
-			continue
+		# if file != "random_map_28.pickle":
+		# 	continue
 
 		problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
 		if len(problem.pdfs) < 4 or len(problem.pdfs) > 7:
 			continue
 
-		start_pos = np.load("start_pos_random_3_agents.npy",allow_pickle=True)
+		start_pos = np.load("start_pos_ang_random_4_agents.npy",allow_pickle=True)
 		problem.s0 = start_pos.item().get(file)
 		# np.array([0.1,0.1,0,0.6,0.7,0])
 
@@ -643,15 +651,18 @@ if __name__ == "__main__":
 
 		clusters = k_means_clustering(problem,n_agents,n_scalar)
 		print("The clusters are: ", clusters)
-		pdb.set_trace()
+		
 
 		best_alloc_OG, indv_erg_OG, start_pos_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
 		# for i in range(n_agents):
 		# 	if i in best_alloc_OG.keys():
 		# 		best_alloc_OG[i] = clusters[best_alloc_OG[i][0]]
 		
+		print("File: ", file)
 		print("\nBest allocation is: ", best_alloc_OG)
+		print("\nBest allocation without clustering: ", best_alloc[file])
 		print("\nBest Individual ergodicity: ", indv_erg_OG)
+		pdb.set_trace()
 		
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG

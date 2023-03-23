@@ -64,7 +64,7 @@ class ErgCalc(object):
 		# the normalization factor
 		hk = []
 		for ki in k:
-		    hk.append(get_hk(ki))
+			hk.append(get_hk(ki))
 		self.hk = np.array(hk)
 
 		# compute phik
