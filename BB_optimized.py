@@ -147,25 +147,27 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
     return allocation
 
 def generate_alloc_nodes(curr_node,n_obj,n_agents):
-	maps_assigned = []
-	temp = curr_node
-	while(curr_node):
-		maps_assigned = maps_assigned + list(curr_node.tasks)
-		curr_node = curr_node.parent
-	maps_left = [] #list(set(np.arange(1,n_obj+1)) - set(maps_assigned))
-	for i in range(n_obj):
-		if i not in maps_assigned:
-			maps_left.append(i)
-	assignments = []
-	if temp.depth+1 == n_agents:
-		start = len(maps_left)
-	else:
-		start = 1
+    maps_assigned = []
+    temp = curr_node
+    while(curr_node):
+        maps_assigned = maps_assigned + list(curr_node.tasks)
+        curr_node = curr_node.parent
+    print("Maps assigned: ", maps_assigned)
+    maps_left = [] #list(set(np.arange(1,n_obj+1)) - set(maps_assigned))
+    for i in range(n_obj):
+        if i not in maps_assigned:
+            maps_left.append(i)
+    print("Maps left: ", maps_left)
+    assignments = []
+    if temp.depth+1 == n_agents:
+        start = len(maps_left)
+    else:
+        start = 1
 
-	for n in np.arange(start,len(maps_left)-(n_agents-temp.depth-1)+1):
-		assignments = assignments + list(itertools.combinations(maps_left, n))
-	
-	return assignments
+    for n in np.arange(start,len(maps_left)-(n_agents-temp.depth-1)+1):
+        assignments = assignments + list(itertools.combinations(maps_left, n))
+
+    return assignments
 
 def traverse(node, result=[], path =[]):
 	path.append((node.tasks,node.indv_erg))
@@ -184,14 +186,14 @@ def update_upper(node,upper):
 	indv_erg = []
 	temp = node
 	while(temp):
-		print("\nAgent: ", temp.agent)
-		print("\nAssignment: ", temp.tasks)
-		print("\nIndv erg: ", temp.indv_erg)
+		# print("\nAgent: ", temp.agent)
+		# print("\nAssignment: ", temp.tasks)
+		# print("\nIndv erg: ", temp.indv_erg)
 		indv_erg = indv_erg + temp.indv_erg
-		print("\nindv erg all: ", indv_erg)
+		# print("\nindv erg all: ", indv_erg)
 		temp = temp.parent
 		# pdb.set_trace()
-	print("The indv ergodicities of the entire allocations: ", indv_erg)
+	# print("The indv ergodicities of the entire allocations: ", indv_erg)
 	if upper > max(indv_erg):
 		print("***updating upper bound")
 		upper = max(indv_erg)
@@ -285,14 +287,14 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
         else:
             pdf = pdf_list[v[0]]
 
-        pdf = jnp.asarray(pdf.flatten())
+        pdf = np.asarray(pdf.flatten())
         
         # Just run ergodicity optimization for fixed iterations to get ergodic trajectory 
         control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
         
         # Calculate individual ergodicities using the gotten trajectory
         for p in v:
-            pdf_indv = jnp.asarray(pdf_list[p].flatten())
+            pdf_indv = np.asarray(pdf_list[p].flatten())
             EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
             incumbent_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
 
@@ -325,6 +327,10 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
             # pdb.set_trace()
             for a in alloc_comb:
                 print("Looking at next possible assignment for agent: ", i)
+                temp = curr_node
+                while(temp):
+                     print("\nparent task: ", temp.tasks)
+                     temp = temp.parent
                 print("Parent Node allocation: ", curr_node.tasks)
                 
                 node = Node(i, a, [], np.inf, np.inf, [], curr_node)
@@ -373,14 +379,14 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
                         pdf = pdf_list[a[0]]
 
                     # og_pdf = pdf
-                    pdf = jnp.asarray(pdf.flatten())
+                    pdf = np.asarray(pdf.flatten())
 
                     #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
                     control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
                     #Can have a heuristic to show the order in which to evaluate the indv ergodicities
                     for p in a:
-                        pdf_indv = jnp.asarray(pdf_list[p].flatten())
+                        pdf_indv = np.asarray(pdf_list[p].flatten())
                         EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
                         erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
                         agent_map_erg[a].append(erg)
@@ -434,7 +440,9 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
                     print("Not pruning this node")
                     curr_node.children.append(node)
                     new_explore_node.append(node)
+            # pdb.set_trace()
         explore_node = new_explore_node
+        # pdb.set_trace()
 
     print("Number of nodes pruned: ", nodes_pruned)
     print("Number of nodes explored: ", nodes_explored)
@@ -473,10 +481,127 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
     runtime = time.time() - start_time
     return best_alloc,runtime,per_leaf_prunes,indv_erg[min_idx]
 
+def find_traj(file,alloc,problem,start_pos):
+    trajectories = []
+    problem.s0 = start_pos.item().get(file)
+
+    pdf_list = problem.pdfs
+
+    for k,v in alloc.items():
+        print(v)
+        if k == None:
+            continue
+        if len(v) > 1:
+            if scalarize:
+                pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+            else:
+                pdf = np.zeros((100,100))
+                for a in v:
+                    pdf += (1/len(v))*pdf_list[a]
+        else:
+            # breakpoint()
+            pdf = pdf_list[v[0]]
+
+        pdf = np.asarray(pdf.flatten())
+        
+        # Just run ergodicity optimization for fixed iterations to get ergodic trajectory 
+        control, _, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+
+        trajectories.append(ergodic_metric.GetTrajXY(control,problem.s0[3*k:3+3*k]))
+    
+    return trajectories
+
+def collision_check(og_trajectories,alloc,problem,recheck=False):
+    if not recheck:
+        trajectories = []
+        for i in range(len(og_trajectories)):
+            trajectories.append(np.array(og_trajectories[i][1]))
+        # breakpoint()
+        for i in range(len(trajectories)):
+            for j in range(len(trajectories[i])):
+                trajectories[i][j][0] = round(trajectories[i][j][0], 1)
+                trajectories[i][j][1] = round(trajectories[i][j][1], 1)
+        print("Rounded off trajectories")
+    else:
+        trajectories = og_trajectories
+    # breakpoint()
+    priorities = []
+    count = 0
+    # breakpoint()
+    for i in range(len(trajectories)):
+        for j in range(i+1,len(trajectories)):
+            c = 0
+            for k in range(1,len(trajectories[0])):
+                # breakpoint()
+                c += 1
+                # print(trajectories[i][k], trajectories[j][k])
+                # breakpoint()
+                if trajectories[i][k][0] == trajectories[j][k][0] and trajectories[i][k][1] == trajectories[j][k][1]:
+                    # print("Collision!!")
+                    count += 1
+                    # if (i,j) in priorities or (j,i) in priorities:
+                    #     print("Priority already exists")
+                    #     continue
+                    # else:
+                    #     print("Not already in priorities")
+                    scorei = 0
+                    scorej = 0
+                    for map in alloc[i]:
+                        scorei += problem.pdfs[map][round(trajectories[i][k][1])][round(trajectories[i][k][0])]
+                    for map in alloc[j]:
+                        scorej += problem.pdfs[map][round(trajectories[j][k][1])][round(trajectories[j][k][0])]
+                    
+                    # print("Scores: ", scorei, scorej)
+                    
+                    if scorei >= scorej:
+                        priorities.append((j,i,k)) #Make agent i wait
+                        if k != 0:
+                            l = k-1
+                            while(trajectories[i][l][0] == trajectories[i][k][0] and trajectories[i][l][1] == trajectories[i][k][1]):
+                                l -= 1
+                            for m in range(l,k+1):
+                                trajectories[i][m][0] = trajectories[i][l][0]
+                                trajectories[i][m][1] = trajectories[i][l][1]
+                            # breakpoint()
+                        print("Made agent i wait")
+
+                    else:
+                        priorities.append((i,j,k))
+                        if k != 0:
+                            l = k-1
+                            while(trajectories[j][l][0] == trajectories[j][k][0] and trajectories[j][l][1] == trajectories[j][k][1]):
+                                print(l,trajectories[j][l])
+                                l -= 1
+                            for m in range(l,k+1):
+                                trajectories[j][m][0] = trajectories[j][l][0]
+                                trajectories[j][m][1] = trajectories[j][l][1]
+                            # breakpoint()
+                            # trajectories[j][k][0] = trajectories[j][k-1][0]
+                            # trajectories[j][k][1] = trajectories[j][k-1][1]
+                        print("Made agent j wait")
+                    # print("Priorities updated")
+                # else:
+                    # print("No collision") 
+            # print("Length of traj: ", c)
+            # breakpoint()
+
+    print("Total number of collisions in the trajectory: ", count)
+    print("Priorities gathered: ", priorities)
+    return trajectories        
+         
+
 if __name__ == "__main__":
-    pbm_file = "random_map_28.pickle"
+    # pbm_file = "random_map_28.pickle"
     n_agents = 4
     n_scalar = 10
+    run_times = {}
+    best_allocs = {}
+    per_leaf_prunes = {}
+    indv_erg_best = {}
+
+    best_alloc_bb = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
+    best_alloc_bb = best_alloc_bb.ravel()[0]
+
     start_pos = np.load("./start_pos_ang_random_4_agents.npy",allow_pickle=True)
     for file in os.listdir("build_prob/random_maps/"):
         pbm_file = "build_prob/random_maps/"+file
@@ -486,12 +611,37 @@ if __name__ == "__main__":
         if len(problem.pdfs) < 4 or len(problem.pdfs) > 7:
             continue
 
+        # if file != "random_map_28.pickle":
+        #     continue
 
-        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False, scalarize=False)
-        print("file: ", file)
-        print("Final allocation: ", final_allocation)
-        print("Runtime: ", runtime)
-        print("per pruned: ", per_leaf_prunes)
+        # final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False, scalarize=False)
+        # print("file: ", file)
+        # print("Final allocation: ", final_allocation)
+        # print("Runtime: ", runtime)
+        # print("per pruned: ", per_leaf_prunes)
+
+        # breakpoint()
+
+        # run_times[pbm_file] = runtime
+        # best_allocs[pbm_file] = final_allocation
+        # per_leaf_prunes[pbm_file] = per_leaf_prunes
+        # indv_erg_best[pbm_file] = indv_erg
+
+        final_allocation = best_alloc_bb[file]
+
+        trajectories = find_traj(file,final_allocation,problem,start_pos)
+
+        feasible_trajectories = collision_check(trajectories,final_allocation,problem)
+
+        print("Checking if the feasible trajectories is indeed collision free after modification")
+
+        new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
+
+        # np.save("BB_opt_random_maps_sparse_runtime_4_agents.npy", run_times)
+        # np.save("BB_opt_best_alloc_random_maps_sparse_4_agents.npy",best_allocs)
+        # np.save("BB_opt_per_leaf_pruned_random_maps_sparse_4_agents.npy",per_leaf_prunes)
+        # np.save("BB_opt_indv_erg_random_maps_sparse_4_agents.npy", indv_erg_best)
+
         pdb.set_trace()
 
 
