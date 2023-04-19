@@ -494,7 +494,7 @@ def find_k_best_allocs(alloc,indv_erg,n_agents):
     return complete_allocs
         
 
-def find_traj(file,alloc,problem,start_pos):
+def find_traj(file,alloc,problem,start_pos,scalarize=False):
     trajectories = []
     problem.s0 = start_pos.item().get(file)
 
@@ -600,8 +600,35 @@ def collision_check(og_trajectories,alloc,problem,recheck=False):
 
     print("Total number of collisions in the trajectory: ", count)
     print("Priorities gathered: ", priorities)
-    return trajectories        
-         
+    return trajectories 
+
+def compute_max_indv_erg(file,final_allocation,problem,start_pos):
+    trajectories = find_traj(file,final_allocation,problem,start_pos)
+     
+    feasible_trajectories = collision_check(trajectories,final_allocation,problem)
+
+    indv_erg = []
+
+    problem.s0 = start_pos.item().get(file)
+
+    pdf_list = problem.pdfs
+
+    for k,v in final_allocation.items():
+        for p in v:
+            pdf_indv = np.asarray(pdf_list[p].flatten())
+            EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+            erg = EC.fourier_ergodic_loss_traj(feasible_trajectories[k])
+            indv_erg.append(erg)
+            print("erg: ", erg)
+
+    
+    # print("Checking if the feasible trajectories is indeed collision free after modification")
+    
+    # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
+    print("Max erg: ", max(indv_erg))
+    breakpoint()
+
+    return max(indv_erg) 
 
 if __name__ == "__main__":
     # pbm_file = "random_map_28.pickle"
@@ -633,22 +660,49 @@ if __name__ == "__main__":
         print("Runtime: ", runtime)
         print("per pruned: ", per_leaf_prunes)
 
-        # breakpoint()
+        breakpoint()
 
         # run_times[pbm_file] = runtime
         # best_allocs[pbm_file] = final_allocation
         # per_leaf_prunes[pbm_file] = per_leaf_prunes
         # indv_erg_best[pbm_file] = indv_erg
 
-        # final_allocation = best_alloc_bb[file]        
+        # final_allocation = best_alloc_bb[file]   
 
-        trajectories = find_traj(file,final_allocation,problem,start_pos)
+        current_alloc_idx = 0 
+        alloc_minmax = {}
+        found_best_alloc = False
+        best_minmax_so_far = np.inf
+        best_alloc_idx = -1
 
-        feasible_trajectories = collision_check(trajectories,final_allocation,problem)
+        while(not found_best_alloc):
+            print("Allocation number: ", current_alloc_idx)
+            print("Allocation considered: ", k_best_allocs[current_alloc_idx])
+            alloc_minmax[current_alloc_idx] = compute_max_indv_erg(file,k_best_allocs[current_alloc_idx][1],problem, start_pos)
+            if current_alloc_idx == 0:
+                best_minmax_so_far = alloc_minmax[current_alloc_idx]
+                best_alloc_idx = current_alloc_idx
+                print("Computed cost of zeroth allocation")
+            else:
+                if alloc_minmax[current_alloc_idx] >= best_minmax_so_far:
+                    print("Found the best allocation scheme with collision-free trajectories")
+                    found_best_alloc = True
+                else:
+                    best_minmax_so_far = alloc_minmax[current_alloc_idx]
+                    best_alloc_idx = current_alloc_idx
+            current_alloc_idx += 1
+        
+        print("Final best allocation: ", best_alloc_idx)
+        print("Final minmax: ", best_minmax_so_far)
+           
 
-        print("Checking if the feasible trajectories is indeed collision free after modification")
+        # trajectories = find_traj(file,final_allocation,problem,start_pos)
 
-        new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
+        # feasible_trajectories = collision_check(trajectories,final_allocation,problem)
+
+        # print("Checking if the feasible trajectories is indeed collision free after modification")
+
+        # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
 
         # np.save("BB_opt_random_maps_sparse_runtime_4_agents.npy", run_times)
         # np.save("BB_opt_best_alloc_random_maps_sparse_4_agents.npy",best_allocs)
