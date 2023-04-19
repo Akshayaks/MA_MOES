@@ -126,7 +126,12 @@ class ErgCalc(object):
 			traj_cost += np.mean((trajectories[i] - np.array([0.5,0.5]))**8)
 		ergodicity = np.sum(self.lamk*np.square(self.phik - ck)) + 3e-2 * np.mean(u**2) + traj_cost
 		return ergodicity
-
+	
+	def fourier_ergodic_loss_traj(self,traj):
+		ck = self.get_ck(traj)
+		traj_cost = np.mean((traj - np.array([0.5,0.5]))**8)
+		ergodicity = np.sum(self.lamk*np.square(self.phik - ck)) + traj_cost
+		return ergodicity
 
 	def traj_stat(self, u, x0):
 		"""
