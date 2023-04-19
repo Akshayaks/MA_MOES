@@ -1,9 +1,9 @@
-import numpy as onp
+import numpy as np
 import sys
 import os
 
 from jax import vmap, jit, grad
-import jax.numpy as np
+# import jax.numpy as np
 from jax.lax import scan
 from functools import partial
 import pdb
@@ -23,6 +23,7 @@ import json
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 from kneed import KneeLocator
 
 np.random.seed(100)
@@ -104,7 +105,7 @@ def generate_alloc_nodes(root,curr_node,num_agents,clusters):
 
 	return assignments
 
-def find_best_allocation(root,values,alloc,indv_erg):
+def find_best_allocation(root,values,alloc,indv_erg,n_agents,n_obj):
 	# list to store path
 	if root == None:
 		return 
@@ -120,8 +121,20 @@ def find_best_allocation(root,values,alloc,indv_erg):
 		for i in np.arange(1,len(values)):
 			path[values[i].agent] = values[i].tasks
 			max_erg += values[i].indv_erg
-		alloc.append(path)
-		indv_erg.append(max_erg)
+			print("tasks, indv_erg: ", values[i].tasks, values[i].indv_erg)
+		# print("path: ", path)
+		# print("indv_erg: ", max_erg)
+		if len(path) == n_agents+1:
+			alloc.append(path)
+			indv_erg.append(max_erg)
+		else:
+			print("Incomplete path")
+		# pdb.set_trace()
+		# alloc.append(path)
+		# if len(alloc) == n_agents+1:
+		# 	indv_erg.append(np.ones(n_obj)*-100)
+		# else:
+		# 	indv_erg.append(max_erg)
 		# print("Path found: ", path)
 		values.pop()
 		return
@@ -129,7 +142,7 @@ def find_best_allocation(root,values,alloc,indv_erg):
 	values.append(root)
 	# print("Values: ", values)
 	for child in root.children:
-		find_best_allocation(child,values,alloc,indv_erg)
+		find_best_allocation(child,values,alloc,indv_erg,n_agents,n_obj)
 	values.pop()
 
 def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
@@ -256,7 +269,89 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 	# pdb.set_trace()
 	return allocation
 
-def branch_and_bound(problem, clusters, n_agents, start=[-1]):
+def greedy_alloc_without_clustering(problem, n_agents,node = None, sensor_footprint = 15):
+    #Allocate based on information in a window centered around the agent
+
+    n_obj = len(problem.pdfs)
+    print("Len objec: ", n_obj)
+    agents_allotted = []
+    maps_allotted = []
+    if node:
+        current_node = node
+        while current_node.parent:
+            agents_allotted.append(current_node.agent)
+            maps_allotted = maps_allotted + list(current_node.tasks)
+            current_node = current_node.parent
+
+    if len(agents_allotted) == n_agents:
+        print("all agents are allotted")
+        return -1
+
+    agent_locs = []
+    for i in range(n_agents):
+        if i in agents_allotted:
+            agent_locs.append((-1,-1))
+        else:
+            agent_locs.append((round(problem.s0[0+i*3]*100),round(problem.s0[1+i*3]*100)))
+
+    agent_scores = np.zeros((n_agents,n_obj))
+
+    # Calculate how much information agent i gets when allotted map p
+
+    for i in range(n_agents):
+        if i in agents_allotted:
+            continue
+
+        x_min = max(agent_locs[i][0]-sensor_footprint,0)
+        x_max = min(agent_locs[i][0]+sensor_footprint,100)
+
+        y_min = max(agent_locs[i][1]-sensor_footprint,0)
+        y_max = min(agent_locs[i][1]+sensor_footprint,100)
+
+        for p in range(n_obj):
+            if p in maps_allotted:
+                continue
+            agent_scores[i][p] = np.sum(problem.pdfs[p][y_min:y_max,x_min:x_max])
+
+    allocation = {new_list: [] for new_list in range(n_agents)}
+
+    agents_assigned = np.zeros(n_agents)
+    print("agent scores: ", agent_scores)
+
+    for i in range(n_obj):
+        if i in maps_allotted:
+            continue
+        k = 0
+        print("i: ", i)
+
+        # Sort the amount of information on a map for different agents in descending order
+
+        map_scores = [a[i] for a in agent_scores]
+        info = sorted(map_scores, reverse=True) 
+        found = False
+        while not found:
+            # print("k: ", k)
+            idx = map_scores.index(info[k]) # Free agent with max info on this map
+            # print("map_scores: ",map_scores)
+            # print("info: ", info)
+            # print("idx: ", idx)
+
+            #Capping the maximum number of maps that can be assigned to an agent to ensure no agent is left without maps
+            # print("agents_assigned: ", agents_assigned)
+            # print("agents_assigned[idx]: ", agents_assigned[idx])
+            # print("np.count_nonzero(agents_assigned == 0) == n_obj - sum(agents_assigned): ", np.count_nonzero(agents_assigned == 0), n_obj - sum(agents_assigned))
+            # print("agents allotted: ", agents_allotted)
+            if (agents_assigned[idx] > 0 and np.count_nonzero(agents_assigned == 0) == n_obj - sum(agents_assigned)) or idx in agents_allotted:
+                k += 1
+            else:
+                allocation[idx] = allocation[idx] + [i]
+                found = True
+                agents_assigned[idx] += 1
+        
+    print("Incumbent allocation: ", allocation)
+    return allocation
+
+def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 
 	start_time = time.time()
 	n_scalar = 10
@@ -269,13 +364,14 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 	print("Read start position as: ",problem.s0)
 
 	#Generate incumbent solution using Greedy approach
+	# incumbent = greedy_alloc_without_clustering(problem,n_agents)
 	incumbent = greedy_alloc(problem,clusters,n_agents,n_scalar)
 	print("\nGot incumbent cluster allocation!")
 
 	incumbent_erg = np.zeros(n_obj)
 
-	# final_allocation = {}
 	nodes_pruned = 0
+	nodes_explored = 0
 
 	#Find the upper bound for the incumbent solution
 	for k,v in incumbent.items():
@@ -319,6 +415,34 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 	print("Incumbent allocation: ", incumbent)
 	print("Incumber Ergodicities: ", incumbent_erg)
 	print("Initial Upper: ", upper)
+
+	# #Find the upper bound for the incumbent solution
+	# for k,v in incumbent.items():
+	# 	if len(v) > 1:
+	# 		if scalarize:
+	# 			pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+	# 		else:
+	# 			pdf = np.zeros((100,100))
+	# 			for a in v:
+	# 				pdf += (1/len(v))*pdf_list[a]
+	# 	else:
+	# 		pdf = pdf_list[v[0]]
+
+	# 	pdf = jnp.asarray(pdf.flatten())
+		
+	# 	# Just run ergodicity optimization for fixed iterations to get ergodic trajectory 
+	# 	control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+		
+	# 	# Calculate individual ergodicities using the gotten trajectory
+	# 	for p in v:
+	# 		pdf_indv = jnp.asarray(pdf_list[p].flatten())
+	# 		EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+	# 		incumbent_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
+
+	# upper = max(incumbent_erg)
+	# print("Incumbent allocation: ", incumbent)
+	# print("Incumber Ergodicities: ", incumbent_erg)
+	# print("Initial Upper: ", upper)
 	# pdb.set_trace()
 
 	#Start the tree with the root node being [], blank assignment
@@ -416,6 +540,47 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1]):
 	print("Percentage of nodes pruned: ", nodes_pruned/total_alloc)
 	return root, problem.s0
 
+def find_minmax(indv_erg):
+	sorted_erg = [sorted(x,reverse=True) for x in indv_erg]
+	n_obj = len(sorted_erg[0])
+	print("Sorted erg: ", sorted_erg)
+	col_with_index = []
+	col = []
+	tied_rows = np.arange(0,len(sorted_erg))
+	for i in range(n_obj):
+		print("col num: ", i)
+		col = []
+		col_with_index = []
+		for tied_idx in tied_rows:
+			col_with_index.append((sorted_erg[tied_idx],tied_idx))
+			col.append(sorted_erg[tied_idx])
+		print("col: ", col)
+		# pdb.set_trace()
+		min_idx = np.argmin([c[i] for c in col])
+		min_idx_sorted_array = col_with_index[min_idx][1]
+		min_val = np.min([c[i] for c in col])
+		print("Min val, idx: ", min_val, min_idx_sorted_array)
+		num = 0
+		ties_at = []
+		print("tied rows: ", tied_rows)
+		# pdb.set_trace()
+		for j in range(len(col_with_index)):
+			if col_with_index[j][0][i] == min_val:
+				num += 1
+				ties_at.append(col_with_index[j][1])
+			print("ties at: ", ties_at)
+			# pdb.set_trace()
+		if num == 1 or num == 0:
+			break
+		else:
+			print("More than one min of: ", min_val, num)
+			tied_rows = ties_at
+			print("Tied at indices: ", tied_rows)
+	# pdb.set_trace()
+			
+	return min_idx_sorted_array
+
+
 def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	start_time = time.time()
 	root, start_pos = branch_and_bound(pbm,clusters,n_agents,start_pos)
@@ -423,25 +588,42 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	values = []
 	alloc = []
 	indv_erg = []
-	find_best_allocation(root,values,alloc,indv_erg)
+	find_best_allocation(root,values,alloc,indv_erg,n_agents,len(pbm.pdfs))
 	print("All paths found: ", alloc)
 	print("Individual ergodicities: ", indv_erg)
 	print("Number of agents: ", n_agents)
 	print("Number of clusters: ", clusters)
+	min_idx = find_minmax(indv_erg)
+	# pdb.set_trace()
+
+	# b = [sorted(x,reverse=True) for x in indv_erg]
+	# pdb.set_trace()
+	# n_obj = len(pbm.pdfs)
+	# b_sorted = sorted(b,key=lambda x:x[0])
+	# if n_obj == 4:
+	# 	b_sorted = sorted(b,key=lambda x:(x[0],x[1],x[2],x[3]))
+	# elif n_obj == 5:
+	# 	b_sorted = sorted(b,key=lambda x:(x[0],x[1],x[2],x[3],x[4]))
+	# elif n_obj == 6:
+	# 	b_sorted = sorted(b,key=lambda x:(x[0],x[1],x[2],x[3],x[4],x[5]))
+	# else:
+	# 	b_sorted = sorted(b,key=lambda x:(x[0],x[1],x[2],x[3],x[4],x[5],x[6]))
+	# pdb.set_trace()
+	# min_idx = np.where(indv_erg == b_sorted[0])
 	# pdb.set_trace()
 
 	#Among all the allocations found, pick the one with min max erg
-	max_erg = []
-	for idx,e in enumerate(indv_erg):
-		# print("e: ", e)
-		# print("len(e): ", len(e))
-		if len(alloc[idx]) < n_agents+1:
-			max_erg.append(100)
-		else:
-			max_erg.append(max(e))
+	# max_erg = []
+	# for idx,e in enumerate(indv_erg):
+	# 	# print("e: ", e)
+	# 	# print("len(e): ", len(e))
+	# 	if len(alloc[idx]) < n_agents+1:
+	# 		max_erg.append(100)
+	# 	else:
+	# 		max_erg.append(max(e))
 
-	print("Max ergodicities: ", max_erg)
-	min_idx = np.argmin(max_erg)
+	# print("Max ergodicities: ", max_erg)
+	# min_idx = np.argmin(max_erg)
 
 	best_alloc = alloc[min_idx]
 
@@ -486,56 +668,56 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 
 
 
-def jensen_shannon_distance(p, q):
-	"""
-	method to compute the Jenson-Shannon Distance 
-	between two probability distributions
-	"""
+# def jensen_shannon_distance(p, q):
+# 	"""
+# 	method to compute the Jenson-Shannon Distance 
+# 	between two probability distributions
+# 	"""
 
-	# convert the vectors into numpy arrays in case that they aren't
-	p = p.flatten()
-	q = q.flatten()
-	d = 0.2
+# 	# convert the vectors into numpy arrays in case that they aren't
+# 	p = p.flatten()
+# 	q = q.flatten()
+# 	d = 0.2
 
-	print("Similarity using Jensen Shannon Distance:")
-	all_dist = []
+# 	print("Similarity using Jensen Shannon Distance:")
+# 	all_dist = []
 
-	for i in range(10):
-		# calculate m
-		m = (p + (p+d)) / 2
+# 	for i in range(10):
+# 		# calculate m
+# 		m = (p + (p+d)) / 2
 
-		# compute Jensen Shannon Divergence
-		divergence = (scipy.stats.entropy(p, m) + scipy.stats.entropy(q, m)) / 2
+# 		# compute Jensen Shannon Divergence
+# 		divergence = (scipy.stats.entropy(p, m) + scipy.stats.entropy(q, m)) / 2
 
-		# compute the Jensen Shannon Distance
-		distance = np.sqrt(divergence)
-		print("distance: ", distance)
-		d += 0.2
-		all_dist.append(distance*100)
+# 		# compute the Jensen Shannon Distance
+# 		distance = np.sqrt(divergence)
+# 		print("distance: ", distance)
+# 		d += 0.2
+# 		all_dist.append(distance*100)
 
-	return distance, all_dist
+# 	return distance, all_dist
 
-def ergodic_similarity(problem, n_scalar): #n_scalar -> num of fourier coefficients
-	pdf1 = problem.pdfs[0].flatten()
-	pdf2 = problem.pdfs[1].flatten()
+# def ergodic_similarity(problem, n_scalar): #n_scalar -> num of fourier coefficients
+# 	pdf1 = problem.pdfs[0].flatten()
+# 	pdf2 = problem.pdfs[1].flatten()
 
-	EC1 = ergodic_metric.ErgCalc(pdf1,1,problem.nA,n_scalar,problem.pix)
+# 	EC1 = ergodic_metric.ErgCalc(pdf1,1,problem.nA,n_scalar,problem.pix)
 
-	d = 0.2
-	all_dist = []
+# 	d = 0.2
+# 	all_dist = []
 
-	for i in range(10):
-		print(sum(pdf1))
-		print(sum((pdf1+d)/sum(pdf1+d)))
-		# pdb.set_trace()
-		EC2 = ergodic_metric.ErgCalc((pdf1+d)/sum(pdf1+d),1,problem.nA,n_scalar,problem.pix)
+# 	for i in range(10):
+# 		print(sum(pdf1))
+# 		print(sum((pdf1+d)/sum(pdf1+d)))
+# 		# pdb.set_trace()
+# 		EC2 = ergodic_metric.ErgCalc((pdf1+d)/sum(pdf1+d),1,problem.nA,n_scalar,problem.pix)
 
-		distance = np.sum(EC1.lamk*np.square(EC1.phik - EC2.phik))
-		print("Distance: ", distance)
-		d += 0.2
-		all_dist.append(distance*1000)
+# 		distance = np.sum(EC1.lamk*np.square(EC1.phik - EC2.phik))
+# 		print("Distance: ", distance)
+# 		d += 0.2
+# 		all_dist.append(distance*1000)
 
-	return distance, all_dist
+# 	return distance, all_dist
 
 def k_means_clustering(pbm,n_agents,n_scalar):
 	
@@ -545,24 +727,40 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 	# n_scalar = 10
 	for pdf in pdfs:
 		EC = ergodic_metric.ErgCalc(pdf.flatten(),1,pbm.nA,n_scalar,pbm.pix)
+		data.append(EC.phik*np.sqrt(EC.lamk))
 		# FC = EC.phik
 		# print("FC: ", EC.phik)
 		# print("Lamda: ", EC.lamk)
 		# print("Product: ", EC.phik*EC.lamk**2)
 		# pdb.set_trace()
-		data.append((EC.phik*EC.lamk))
+		# data.append((EC.phik*EC.lamk))
 	cost =[]
+	s_score = []
 	for i in range(1, len(pdfs)+1):
-		KM = KMeans(n_clusters = i, max_iter = 1500)
+		print("Number of clusters: ", i)
+		KM = KMeans(n_clusters = i, max_iter = 500, random_state=0)
 		KM.fit(data)
+		# pdb.set_trace()
 		# calculates squared error
 		# for the clustered points
-		cost.append(KM.inertia_*100000)
+		cluster_labels = KM.labels_
+		print("labels: ", cluster_labels)
+		# pdb.set_trace()
+		if len(KM.cluster_centers_) == 1 or len(KM.cluster_centers_) == len(pdfs):
+			s_score.append(-1)
+		else:
+			silhouette_avg = silhouette_score(data,cluster_labels)
+			s_score.append(silhouette_avg)
+		cost.append(KM.inertia_)
 		print("\nCost for this clustering: ", cost)
+		print("\nSil score: ", s_score)
 		#plot the cost against K values
 	x = np.arange(1,len(pdfs)+1)
 	kn = KneeLocator(x, cost, curve='convex', direction='decreasing', online=True, S=1)
 	print("knee: ", kn.knee)
+	print("knee_s_score: ", np.argmax(s_score)+1)
+	# pdb.set_trace()
+
 
 	##### For now we want the n_clusters >= n_agents ########
 	if kn.knee:
@@ -575,13 +773,14 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 		n_clusters = n_agents
 
 	# plt.plot(range(1, len(pdfs)+1), cost, color ='g', linewidth ='3')
+	# plt.plot(range(1, len(pdfs)+1), s_score, color ='r', linewidth ='3')
 	# plt.xlabel("Value of K")
 	# plt.ylabel("Squared Error (Cost)")
 	# plt.show() # clear the plot
 	Kmean = KMeans(n_clusters=n_clusters)
 	Kmean.fit(data)
 	print("\nThe cluster labels are: ", Kmean.labels_)
-	pdb.set_trace()
+	# pdb.set_trace()
 	clusters = [[] for _ in range(n_clusters)]
 	labels = Kmean.labels_
 	for idx,l in enumerate(labels):
@@ -602,8 +801,8 @@ if __name__ == "__main__":
 	best_allocs = {}
 	indv_erg_best = {}
 
-	best_alloc = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
-	best_alloc = best_alloc.ravel()[0]
+	best_alloc_done = np.load("./BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
+	best_alloc_done = best_alloc_done.ravel()[0]
 
 	for file in os.listdir("build_prob/random_maps/"):
 		# if cnt == 2:
@@ -613,12 +812,14 @@ if __name__ == "__main__":
 		print("\nFile: ", file)
 		# pdb.set_trace()
 
-		# if file != "random_map_28.pickle":
-		# 	continue
+		if file in best_alloc_done.keys():
+			print("Already done")
+			continue
 
 		problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-		if len(problem.pdfs) < 4 or len(problem.pdfs) > 7:
+		if len(problem.pdfs) < 4:
+			print("Less than 4")
 			continue
 
 		start_pos = np.load("start_pos_ang_random_4_agents.npy",allow_pickle=True)
@@ -660,17 +861,17 @@ if __name__ == "__main__":
 		
 		print("File: ", file)
 		print("\nBest allocation is: ", best_alloc_OG)
-		print("\nBest allocation without clustering: ", best_alloc[file])
+		# print("\nBest allocation without clustering: ", best_alloc[file])
 		print("\nBest Individual ergodicity: ", indv_erg_OG)
-		pdb.set_trace()
+		# pdb.set_trace()
 		
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG
 		indv_erg_best[file] = indv_erg_OG
 
-		# np.save("4to7maps_BB_similarity_clustering_runtime_4_agents.npy", run_times)
-		# np.save("4to7maps_BB_similarity_clustering_best_alloc_4_agents.npy", best_allocs)
-		# np.save("4to7maps_BB_similarity_clustering_indv_erg_4_agents.npy", indv_erg_best)
+		np.save("BB_similarity_clustering_random_maps_runtime_4_agents_remaining.npy", run_times)
+		np.save("BB_similarity_clustering_random_maps_best_alloc_4_agents_remaining.npy", best_allocs)
+		np.save("BB_similarity_clustering_random_maps_indv_erg_4_agents_remaining.npy", indv_erg_best)
 
 		# file1.write(file)
 		# file1.write("\n")

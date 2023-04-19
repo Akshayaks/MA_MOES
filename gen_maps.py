@@ -29,12 +29,12 @@ def GenMOESProblemFourier(nA, pbm_file_name,n_maps):
     pdfs = []
 
     for _ in range(n_maps):
-        n_peaks = random.randint(1,6)
+        n_peaks = random.randint(1,3)
         m = []
         c = []
         for j in range(n_peaks):
             m.append([random.randint(5,80)/100,random.randint(5,80)/100])
-            c.append([[random.randint(1,5)/100,0],[0,random.randint(1,5)/100]])
+            c.append([[random.randint(1,3)/1000,0],[0,random.randint(1,3)/1000]])
         mu = np.array(m)
         cov = np.array(c)
         pdf = gaussianMixtureDistribution(n_peaks, pix, mus=mu, covs=cov)
@@ -51,10 +51,9 @@ def GenMOESProblemFourier(nA, pbm_file_name,n_maps):
 
 if __name__ == "__main__":
 	nA = 100
-	n_examples = 100
+	n_examples = 50
 	for i in range(n_examples):
-		pbm_file = "build_prob/random_maps_20/random_map_" + str(i) + ".pickle"
-		n_maps = 20
-        # random.randint(3,11)
+		pbm_file = "build_prob/random_maps_sparse/random_map_" + str(i) + ".pickle"
+		n_maps = random.randint(4,7)
 		GenMOESProblemFourier(nA, pbm_file, n_maps)
 

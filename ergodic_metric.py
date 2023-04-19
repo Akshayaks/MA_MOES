@@ -86,6 +86,11 @@ class ErgCalc(object):
 		self.gradient = jit(grad(self.fourier_ergodic_loss))
 
 		return
+	
+	def get_recon(self, FC):
+		X,Y = np.meshgrid(*[np.linspace(0,1,num=self.nPix)]*2)
+		_s = np.stack([X.ravel(), Y.ravel()]).T
+		return np.dot(FC, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
 
 	def get_ck(self, tr):
 		"""

@@ -8,7 +8,7 @@ import pdb
 
 GLOBAL_NUM_K = 0
 
-def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=None, stop_eps=-1, kkk=0,grad_criterion=False,pdf1=None,pdf2=None):
+def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=None, stop_eps=-1, kkk=0,grad_criterion=False,pdf1=None,pdf2=None,direct_FC=None):
 	"""
 	run ergodic coverage over a info map. Modified from Ian's code.
 	return a list of control inputs.
@@ -16,7 +16,12 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 	# print("****************************************************************")
 	# print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
 	
-	erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
+	
+	if direct_FC is not None:
+		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
+		erg_calc.phik = direct_FC
+	else:
+		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 	if pdf1 is not None:
 		erg_calc1 = ergodic_metric.ErgCalc(pdf1, n_agents, nA, n_fourier, nPix)
 	if pdf2 is not None:
