@@ -40,6 +40,10 @@ def GetTrajXY(u, x0):
 	tr = tr0[:,0:2] # take the (x,y) part of all points
 	return xf, tr
 
+def GetTrajXYTheta(u,x0):
+	xf, tr = scan(fDiffDrive, x0, u)
+	return xf, tr
+
 
 class ErgCalc(object):
 	"""
