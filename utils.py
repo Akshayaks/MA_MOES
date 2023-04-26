@@ -64,7 +64,7 @@ def generate_allocations(n_obj,n_agents):
 '''
 Display function that can take any number of maps and plot the trajectory if given
 '''
-def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=None):
+def display_map_results(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=None):
   x = np.linspace(0,100,num=100)
   y = np.linspace(0,100,num=100)
   X,Y = np.meshgrid(x,y)
@@ -137,6 +137,60 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=Non
     plt.savefig("./random_maps/bb_"+pbm_file+".jpg")
   plt.show()
   return
+
+def display_map(pbm,start_pos,pbm_file=None,tj=None,title=None,ref=None):
+    x = np.linspace(0,100,num=100)
+    y = np.linspace(0,100,num=100)
+    X,Y = np.meshgrid(x,y)
+
+    # pbm.s0 = start_pos
+
+    n_obj = len(pbm.pdfs)
+    n_col = math.ceil(n_obj/2)
+    if n_col == 1:
+      n_col += 1
+    n_agents = int(len(start_pos)/3)
+    n_agents = 1
+    print("Number of agents: ", n_agents)
+
+    fig, axs = plt.subplots(2, n_col,figsize=(5,5))
+    l = 0
+    color = ["green","red","yellow","blue","cyan","#ee00ff","#ffa500","#a020f0","#ffc0cb","#007ccc"]
+    colors = ["red", "blue", "green", "yellow"]
+
+    for i in range(2):
+      for j in range(n_col):
+        print(l)
+        axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
+        axs[i,j].set_title("Info Map "+str(l+1))
+        for k in range(n_agents):
+          axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
+          if tj != None:
+            if l == 0:
+              breakpoint()
+              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2) #green
+              if ref:
+                axs[i,j].plot(ref[l][:,0]*100,ref[l][:,1]*100,color="green",linewidth=2) #green
+            elif l == 1:
+              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="blue",linewidth=2) #red
+            elif l == 2:
+              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2) #blue
+            elif l == 3:
+              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2)
+            else:
+              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2)
+        l += 1
+        if l == n_obj:
+          break
+      if l == n_obj:
+        break
+    if title:
+      fig.suptitle(title)
+    if pbm_file:
+      plt.savefig("./random_maps/bb_"+pbm_file+".jpg")
+    plt.legend(["Reference trajectory", "Actual trajectory"])
+    plt.show()
+    return
 
 '''
 Display the map and the cropped portion of the map (window approach)

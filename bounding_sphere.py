@@ -8,18 +8,19 @@ def center_sphere(pdf_list,nA,pix):
     FC = []
     for pdf in pdf_list:
         EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
-        FC.append(EC.phik) #*np.sqrt(EC.lamk))
+        FC.append(EC.phik*np.sqrt(EC.lamk))
     # print("Length of each map feature vector: ", len(FC[0]))
     # FC[1] = FC[0]
     # print("Feature vector: ", FC)
     res = miniball(np.asarray(FC,dtype=np.double))
-    pdf_FC = res["center"]
-    # pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+    # pdf_FC = res["center"]
+    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
     minmax = res["radius"]
     # print("Sphere center: ", pdf_FC)
+    print("Sphere radius: ", minmax)
     # print("Diff: ", pdf_FC - FC[0])
     # print("Diff2: ", pdf_FC - FC[1])
-    # breakpoint()
+    breakpoint()
     pdf_recon = EC.get_recon(pdf_FC)
     return pdf_FC,pdf_recon
 
@@ -40,8 +41,8 @@ for file in best_alloc_bb.keys():
     print("Alloc: ", alloc)
     if alloc == []:
         continue
-    if file != "random_map_29.pickle":
-        continue
+    # if file != "random_map_29.pickle":
+    #     continue
 
     pbm_file_complete = "./build_prob/random_maps/" + file
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
@@ -53,6 +54,7 @@ for file in best_alloc_bb.keys():
     pdf_list = problem.pdfs
 
     alloc_erg = {}
+    alloc_erg_wt = {}
 
     #Find the upper bound for the alloc solution
     for k,v in alloc.items():
@@ -68,13 +70,17 @@ for file in best_alloc_bb.keys():
                 pdf_weighted += (1/len(v))*pdf_list[vi]
             pdf_weighted = np.asarray(pdf_weighted.flatten())
             EC = ergodic_metric.ErgCalc(pdf_weighted,1,problem.nA,n_scalar,problem.pix)
-            print("The phik of the scalarized information map: ", EC.phik)
+            print("The phik of the scalarized information map: ", EC.phik[:10])
+
+            breakpoint()
+            print("Diff between two pdfs: ", pdf.flatten()-pdf_weighted)
 
             breakpoint()
 
             pdf = np.asarray(pdf.flatten())
             # Just run ergodicity optimization for fixed iterations to get ergodic trajectory 
             control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_phik)
+            control_wt, erg, _ = ErgCover(pdf_weighted.flatten(), 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
         else:
             # small_alloc = True
@@ -82,21 +88,26 @@ for file in best_alloc_bb.keys():
             pdf = pdf_list[v[0]]
             pdf = np.asarray(pdf.flatten())
             control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+            control_wt = control
         
         # Calculate individual ergodicities using the gotten trajectory
         for p in v:
             pdf_indv = np.asarray(pdf_list[p].flatten())
             EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
             alloc_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
+            alloc_erg_wt[p] = EC.fourier_ergodic_loss(control_wt,problem.s0[3*k:3+3*k])
     if small_alloc:
         continue
     upper = max(alloc_erg)
-    print("Incumbent allocation: ", alloc)
-    print("Incumber Ergodicities: ", alloc_erg)
-    print("Initial Upper: ", upper)
+    print("Alloc: ", alloc)
+    print("Indv erg with minimal bounding sphere: ", alloc_erg)
+    print("Indv erg with wt map: ", alloc_erg_wt)
+    # print("Incumbent allocation: ", alloc)
+    # print("Incumber Ergodicities: ", alloc_erg)
+    # print("Initial Upper: ", upper)
 
-    print("Individual erg: ", indv_erg_bb[file])
-    print("Minmax: ", max(indv_erg_bb[file]))
+    # print("Individual erg: ", indv_erg_bb[file])
+    # print("Minmax: ", max(indv_erg_bb[file]))
 
     breakpoint()
 
