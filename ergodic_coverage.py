@@ -21,9 +21,9 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 		erg_calc.phik = direct_FC
 	else:
-		print("Getting ErgCalc done")
-		print("x0: ", s0)
-		breakpoint()
+		# print("Getting ErgCalc done")
+		# print("x0: ", s0)
+		# breakpoint()
 		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 	if pdf1 is not None:
 		erg_calc1 = ergodic_metric.ErgCalc(pdf1, n_agents, nA, n_fourier, nPix)

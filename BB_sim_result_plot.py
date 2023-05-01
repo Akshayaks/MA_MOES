@@ -201,11 +201,11 @@ for j in range(len(map_files)):
         sim_alloc.sort()
         bb_alloc.sort()
 
-        # print("sim_alloc: ", sim_alloc)
-        # print("\nbb_alloc: ", bb_alloc)
+        print("sim_alloc: ", sim_alloc)
+        print("\nbb_alloc: ", bb_alloc)
         
         if sim_alloc == bb_alloc:
-            # print("same")
+            print("same")
             same_clustering += 1
     else:
         print("\nRuntime of this case less than 0 for r_BB")

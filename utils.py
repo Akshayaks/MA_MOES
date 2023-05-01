@@ -1,5 +1,6 @@
 from matplotlib.patches import Rectangle, Circle
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
 from more_itertools import set_partitions
 import itertools
@@ -138,47 +139,37 @@ def display_map_results(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,t
   plt.show()
   return
 
-def display_map(pbm,start_pos,pbm_file=None,tj=None,title=None,ref=None):
+def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,collision_points=None):
     x = np.linspace(0,100,num=100)
     y = np.linspace(0,100,num=100)
     X,Y = np.meshgrid(x,y)
 
-    # pbm.s0 = start_pos
+    pbm.s0 = start_pos
 
     n_obj = len(pbm.pdfs)
     n_col = math.ceil(n_obj/2)
     if n_col == 1:
       n_col += 1
     n_agents = int(len(start_pos)/3)
-    n_agents = 1
-    print("Number of agents: ", n_agents)
+    # print("Number of agents: ", n_agents)
+    # print("Number of columns: ", n_col)
 
     fig, axs = plt.subplots(2, n_col,figsize=(5,5))
     l = 0
-    color = ["green","red","yellow","blue","cyan","#ee00ff","#ffa500","#a020f0","#ffc0cb","#007ccc"]
-    colors = ["red", "blue", "green", "yellow"]
+    colors = ["red", "blue", "green", "yellow"] #Colors for each agent
 
     for i in range(2):
       for j in range(n_col):
         print(l)
         axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
         axs[i,j].set_title("Info Map "+str(l+1))
+
         for k in range(n_agents):
-          axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
-          if tj != None:
-            if l == 0:
-              breakpoint()
-              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2) #green
-              if ref:
-                axs[i,j].plot(ref[l][:,0]*100,ref[l][:,1]*100,color="green",linewidth=2) #green
-            elif l == 1:
-              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="blue",linewidth=2) #red
-            elif l == 2:
-              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2) #blue
-            elif l == 3:
-              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2)
-            else:
-              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2)
+          if l in alloc[k]:
+            axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
+            if tj != None:
+              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color=colors[k],linewidth=2)
+            break
         l += 1
         if l == n_obj:
           break
@@ -188,8 +179,19 @@ def display_map(pbm,start_pos,pbm_file=None,tj=None,title=None,ref=None):
       fig.suptitle(title)
     if pbm_file:
       plt.savefig("./random_maps/bb_"+pbm_file+".jpg")
-    plt.legend(["Reference trajectory", "Actual trajectory"])
+    if ref:
+      plt.legend(["Reference trajectory", "Actual trajectory"])
     plt.show()
+
+    
+    if collision_points != None:
+      for c in range(len(collision_points)):
+        for k in range(n_agents):
+          plt.plot(tj[k][:c[0],0]*100,tj[k][:c[0],1]*100,color=colors[k],linewidth=2)
+        c_x = [collision_points[c][0]]
+        c_y = [collision_points[c][1]]
+        plt.scatter(c_x,c_y,marker='X',linewidths=1.5)
+        plt.show()
     return
 
 '''
@@ -223,10 +225,43 @@ def display_both(pdf,s0,h1,h2,w1,w2,pdf_zeroed,start_pos,tj,w_size):
    # plt.savefig("./windows/"+str(w_size)+"_"+str(start_pos[0]*100)+"_"+str(start_pos[1]*100)+".jpg")
    plt.show()
 
+# def animate_traj(trajectories):
+#   print("Animating the plot")
+#   t = np.arange(0,len(trajectories[0]))
+#   n = len(trajectories)
+
+#   t = np.linspace(0, t_flight, 100)
+#   x = u*np.cos(theta)*t
+#   y = u*np.sin(theta)*t - 0.5*g*t**2
+
+#   fig, ax = plt.subplots()
+#   line, = ax.plot(x, y, color='k')
+
+#   xmin = x[0]
+#   ymin = y[0]
+#   xmax = max(x)
+#   ymax = max(y)
+#   xysmall = min(xmax,ymax)
+#   maxscale = max(xmax,ymax)
+#   circle = plt.Circle((xmin, ymin), radius=np.sqrt(xysmall))
+#   ax.add_patch(circle)
+
+#   def update(num, x, y, line, circle):
+#       line.set_data(x[:num], y[:num])
+#       circle.center = x[num],y[num]
+#       line.axes.axis([0, max(np.append(x,y)), 0, max(np.append(x,y))])
+
+#       return line,circle
+
+#   ani = animation.FuncAnimation(fig, update, len(x), fargs=[x, y, line, circle],
+#                                 interval=25, blit=True)
+
+#   ani.save('projectile.gif')
+#   plt.show()
 
 # cProfile.run("random_start_pos(5)")
 # a = generate_allocations(12,4)
 # print("Num: ", len(a))
 # print("a: ", a)
 
-gen_start_pos("./build_prob/random_maps_20/",10)
+# gen_start_pos("./build_prob/random_maps_20/",10)

@@ -600,10 +600,41 @@ def collision_check(og_trajectories,alloc,problem,recheck=False):
 
     print("Total number of collisions in the trajectory: ", count)
     print("Priorities gathered: ", priorities)
-    return trajectories 
+    return trajectories
+
+def show_collisions(og_trajectories,problem,recheck=False):
+    collision_points = []
+    if not recheck:
+        trajectories = []
+        for i in range(len(og_trajectories)):
+            trajectories.append(np.array(og_trajectories[i][1]))
+        # breakpoint()
+        for i in range(len(trajectories)):
+            for j in range(len(trajectories[i])):
+                trajectories[i][j][0] = round(trajectories[i][j][0], 1)
+                trajectories[i][j][1] = round(trajectories[i][j][1], 1)
+        print("Rounded off trajectories")
+    else:
+        trajectories = og_trajectories
+    count = 0
+    for i in range(len(trajectories)):
+        for j in range(i+1,len(trajectories)):
+            c = 0
+            for k in range(1,len(trajectories[0])):
+                c += 1
+                if trajectories[i][k][0] == trajectories[j][k][0] and trajectories[i][k][1] == trajectories[j][k][1]:
+                    collision_points.append((trajectories[i][k][0],trajectories[i][k][1]))
+                    count += 1
+
+    print("Total number of collisions in the trajectory: ", count)
+    display_map(problem,problem.s0,collision_points=collision_points)
+
+    return 
 
 def compute_max_indv_erg(file,final_allocation,problem,start_pos):
     trajectories = find_traj(file,final_allocation,problem,start_pos)
+
+    show_collisions(trajectories,problem)
      
     feasible_trajectories = collision_check(trajectories,final_allocation,problem)
 

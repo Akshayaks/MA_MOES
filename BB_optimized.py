@@ -587,7 +587,46 @@ def collision_check(og_trajectories,alloc,problem,recheck=False):
 
     print("Total number of collisions in the trajectory: ", count)
     print("Priorities gathered: ", priorities)
-    return trajectories        
+    return trajectories
+
+def show_collisions(og_trajectories,problem,alloc):
+    print("In show collisions")
+    breakpoint()
+    collision_points = []
+    trajectories = []
+    for i in range(len(og_trajectories)):
+        trajectories.append(np.array(og_trajectories[i][1]))
+    #     # breakpoint()
+    #     for i in range(len(trajectories)):
+    #         for j in range(len(trajectories[i])):
+    #             trajectories[i][j][0] = round(trajectories[i][j][0], 1)
+    #             trajectories[i][j][1] = round(trajectories[i][j][1], 1)
+    #     print("Rounded off trajectories")
+    # else:
+    #     trajectories = og_trajectories
+    count = 0
+    print("Length of trajectories: ", len(trajectories))
+    breakpoint()
+    for i in range(len(trajectories)):
+        for j in range(len(trajectories)):
+            if j == i:
+                continue
+            c = 0
+            for k in range(1,len(trajectories[0])):
+                c += 1
+                if abs(trajectories[i][k][0] - trajectories[j][k][0]) < 0.005 and abs(trajectories[i][k][1] - trajectories[j][k][1]) < 0.005:
+                    print("collision")
+                    collision_points.append((k,trajectories[i][k][0],trajectories[i][k][1]))
+                    count += 1
+    tj = []
+    breakpoint()
+    for k in range(len(og_trajectories)):
+        tj.append(np.array(og_trajectories[k][1]))
+
+    print("Total number of collisions in the trajectory: ", count)
+    display_map(problem,problem.s0,alloc,tj=trajectories,collision_points=collision_points)
+
+    return    
          
 
 if __name__ == "__main__":
@@ -608,7 +647,7 @@ if __name__ == "__main__":
         print("\nFile: ", pbm_file)
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        if len(problem.pdfs) < 4 or len(problem.pdfs) > 7:
+        if len(problem.pdfs) < 4 or len(problem.pdfs) > 4:
             continue
 
         # if file != "random_map_28.pickle":
@@ -630,6 +669,14 @@ if __name__ == "__main__":
         final_allocation = best_alloc_bb[file]
 
         trajectories = find_traj(file,final_allocation,problem,start_pos)
+
+        tj = []
+        for i in range(len(trajectories)):
+            tj.append(trajectories[i][1])
+
+        display_map(problem,start_pos.item().get(file),final_allocation,tj=tj)
+
+        show_collisions(trajectories,problem,final_allocation)
 
         feasible_trajectories = collision_check(trajectories,final_allocation,problem)
 
