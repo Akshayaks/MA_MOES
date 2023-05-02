@@ -151,8 +151,6 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     if n_col == 1:
       n_col += 1
     n_agents = int(len(start_pos)/3)
-    # print("Number of agents: ", n_agents)
-    # print("Number of columns: ", n_col)
 
     fig, axs = plt.subplots(2, n_col,figsize=(5,5))
     l = 0
@@ -186,10 +184,11 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     
     if collision_points != None:
       for c in range(len(collision_points)):
+        print(collision_points[c])
         for k in range(n_agents):
-          plt.plot(tj[k][:c[0],0]*100,tj[k][:c[0],1]*100,color=colors[k],linewidth=2)
-        c_x = [collision_points[c][0]]
-        c_y = [collision_points[c][1]]
+          plt.plot(tj[k][:collision_points[c][0],0]*100,tj[k][:collision_points[c][0],1]*100,color=colors[k],linewidth=2)
+        c_x = [collision_points[c][1]*100]
+        c_y = [collision_points[c][2]*100]
         plt.scatter(c_x,c_y,marker='X',linewidths=1.5)
         plt.show()
     return

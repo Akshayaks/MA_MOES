@@ -1,22 +1,14 @@
-import numpy as onp
-import sys
+import numpy as np
 import os
 
-from jax import vmap, jit, grad
-import jax.numpy as np
-from jax.lax import scan
-from functools import partial
-import pdb
-from sklearn.preprocessing import normalize
+import jax.numpy as jnp
 import common
-import scalarize
 from ergodic_coverage import ErgCover
 
 import scipy.stats
 import ergodic_metric
 from utils import *
 from explicit_allocation import *
-import math
 import time
 import json
 
@@ -89,14 +81,11 @@ def find_best_allocation(root,values,alloc,indv_erg):
 	if root == None:
 		return 
 	if len(root.children) == 0:
-		# print("Reached leaf node")
 		path = {}
 		max_erg = []
 		values.append(root)
 		path[values[0].agent] = values[0].tasks
 		max_erg += values[0].indv_erg
-		# print("Path before adding all elements in values: ", path)
-		# print("values: ", values)
 		for i in np.arange(1,len(values)):
 			path[values[i].agent] = values[i].tasks
 			max_erg += values[i].indv_erg
