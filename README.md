@@ -21,3 +21,8 @@ To run the branch and bound with similarity clustering:
 ```
 python similarity_between_maps.py
 ```
+
+To run the branch and bound that considers inter-agent collisions:
+```
+python BB_optimized_TA.py
+```
