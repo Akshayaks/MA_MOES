@@ -19,7 +19,8 @@ def fDiffDrive(x0, u):
 def follow(pos,Xref,Uref):
     print("Going to follow the trajectory")
     #breakpoint()
-    Kp = np.array([0.95,0.1])
+    Kp = np.array([0.6,0.2]) #0.95,0.1; 0.8,0.1
+    Ki = np.array([0.05,0.1])
     # Kd = 1.5
     curr_pos = np.array(pos)
     curr_vel = np.array([0,0])
@@ -35,7 +36,7 @@ def follow(pos,Xref,Uref):
         # print("Position error: ", p_err[-1])
         # print("Velocity error: ", v_err[-1])
         # #breakpoint()
-        curr_vel = -np.multiply(Kp,[pos_error,theta_error]) #- Kd*vel_error
+        curr_vel = -np.multiply(Kp,[pos_error,theta_error]) - np.multiply(Ki,[sum(p_err)/(i+1),sum(v_err)/(i+1)]) #- Kd*vel_error
         # print("Current vel: ", curr_vel)
         # print("Reference velocity: ", Uref[i])
         # v = curr_vel/np.cos(curr_pos[2])  #v = vx/cos(theta)
@@ -54,13 +55,13 @@ def simple_EC():
 
     problem.nA = 100
 
-    start_pos = np.load("./start_pos_ang_random_4_agents.npy",allow_pickle=True)
+    start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
     problem.s0 = start_pos.item().get("random_map_28.pickle")
     print("Agent start positions allotted:", problem.s0)
 
     #breakpoint()
 
-    display_map(problem,problem.s0)
+    # display_map(problem,problem.s0,{0:[0,1,2,3],1:[0,1,2,3],2:[0,1,2,3],3:[0,1,2,3]})
 
     trajectories = []
     actual_tj = []
@@ -73,31 +74,31 @@ def simple_EC():
             print("Agent number: ", j)
             print("Start position: ", problem.s0[j*3:j*3+3])
             #breakpoint()
-            pdf = problem.pdfs[0]*0.5 + problem.pdfs[3]*0.5
+            # pdf = problem.pdfs[0]*0.5 + problem.pdfs[3]*0.5
             # for k in range(len(problem.pdfs)):
             #     pdf += problem.pdfs[k]
-            pdf = jnp.asarray(pdf.flatten())
+            # pdf = jnp.asarray(pdf.flatten())
             # EC = ergodic_metric.ErgCalc(pdf,1,problem.nA,n_scalar,problem.pix)
 
-            control, erg, iters = ErgCover(pdf, 1, problem.nA, problem.s0[j*3:j*3+3], n_scalar, problem.pix, 500, False, None, stop_eps=-1,grad_criterion=True)
+            # control, erg, iters = ErgCover(pdf, 1, problem.nA, problem.s0[j*3:j*3+3], n_scalar, problem.pix, 500, False, None, stop_eps=-1,grad_criterion=True)
 
-            print("ErgCover done")
-            print("problem s0: ", problem.s0)
+            # print("ErgCover done")
+            # print("problem s0: ", problem.s0)
             #breakpoint()
-            _, tj = ergodic_metric.GetTrajXYTheta(control, problem.s0[j*3:j*3+3])
-            print("Length of traj and controls: ", len(tj),len(control))
-            trajectories.append(tj)
+            # _, tj = ergodic_metric.GetTrajXYTheta(control, problem.s0[j*3:j*3+3])
+            # print("Length of traj and controls: ", len(tj),len(control))
+            # trajectories.append(tj)
 
             problem.pdfs = [problem.pdfs[0]*0.5 + problem.pdfs[3]*0.5]
-            # problem.s0 = problem.s0[j*3:j*3+3]
+            problem.s0 = problem.s0[j*3:j*3+3]
 
             # np.save("sample_traj.npy",tj)
             # np.save("sample_control.npy",control)
 
-            # tj = np.load("sample_traj.npy")
-            # control = np.load("sample_control.npy")
+            tj = np.load("sample_traj.npy")
+            control = np.load("sample_control.npy")
 
-            display_map(problem,problem.s0,tj=[tj])
+            display_map(problem,problem.s0,{0:[0,1,2,3],1:[0,1,2,3],2:[0,1,2,3],3:[0,1,2,3]},tj=[tj])
 
             Xref = tj
             Uref = control
@@ -111,7 +112,7 @@ def simple_EC():
             print("Problem s0: ", problem.s0)
             #breakpoint()
 
-            display_map(problem,problem.s0[j*3:j*3+3],tj=[atj],ref=[tj])
+            display_map(problem,problem.s0[j*3:j*3+3],{0:[0,1,2,3],1:[0,1,2,3],2:[0,1,2,3],3:[0,1,2,3]},tj=[atj],ref=[Xref])
 
             timestep = np.arange(0,len(p_err))
 

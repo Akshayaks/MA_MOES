@@ -13,8 +13,8 @@ def center_sphere(pdf_list,nA,pix):
     # FC[1] = FC[0]
     # print("Feature vector: ", FC)
     res = miniball(np.asarray(FC,dtype=np.double))
-    # pdf_FC = res["center"]
-    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+    pdf_FC = res["center"]
+    # pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
     minmax = res["radius"]
     # print("Sphere center: ", pdf_FC)
     print("Sphere radius: ", minmax)
@@ -32,7 +32,13 @@ indv_erg_bb = indv_erg_bb.ravel()[0]
 n_agents = 4
 n_scalar = 10
 
-start_pos = np.load("./start_pos_ang_random_4_agents.npy",allow_pickle=True)
+start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
+
+best_alloc_bb = np.load("./BB_opt_best_alloc_random_maps_sparse_4_agents_sphere.npy",allow_pickle=True)
+best_alloc_bb = best_alloc_bb.ravel()[0]
+
+best_alloc_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
+best_alloc_sim = best_alloc_sim.ravel()[0]
 
 for file in best_alloc_bb.keys():
     small_alloc = False
@@ -44,7 +50,7 @@ for file in best_alloc_bb.keys():
     # if file != "random_map_29.pickle":
     #     continue
 
-    pbm_file_complete = "./build_prob/random_maps/" + file
+    pbm_file_complete = file #"./build_prob/random_maps/" + file
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
     n_obj = len(problem.pdfs)
@@ -99,9 +105,9 @@ for file in best_alloc_bb.keys():
     if small_alloc:
         continue
     upper = max(alloc_erg)
-    print("Alloc: ", alloc)
-    print("Indv erg with minimal bounding sphere: ", alloc_erg)
-    print("Indv erg with wt map: ", alloc_erg_wt)
+    # print("Alloc: ", alloc)
+    # print("Indv erg with minimal bounding sphere: ", alloc_erg)
+    # print("Indv erg with wt map: ", alloc_erg_wt)
     # print("Incumbent allocation: ", alloc)
     # print("Incumber Ergodicities: ", alloc_erg)
     # print("Initial Upper: ", upper)
@@ -109,6 +115,9 @@ for file in best_alloc_bb.keys():
     # print("Individual erg: ", indv_erg_bb[file])
     # print("Minmax: ", max(indv_erg_bb[file]))
 
+    print("Clusters from BB: ", best_alloc_bb[file])
+    print("Clusters from minimal bounding spheres: ",)
+    print("Clusters from similarity clustering: ", best_alloc_sim[file])
     breakpoint()
 
 
