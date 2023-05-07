@@ -6,17 +6,15 @@ import ergodic_metric
 from utils import *
 from explicit_allocation import *
 import time
-
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 from kneed import KneeLocator
 
 np.random.seed(100)
 
 """
-Branch and bound using clusters of maps based on the norm of the difference in their fourier 
+Branch and bound using clusters of maps based on the norm of the difference in their weighted fourier 
 coefficients. The agents are then allotted to one cluster instead of being allotted to a set
 of maps. Every level of the tree will correspond to the assignment of an agent to one cluster.
 Thus the tree will have a depth equal to the number of agents.
@@ -97,6 +95,17 @@ def find_best_allocation(root,values,alloc,indv_erg,n_agents,n_obj):
 	for child in root.children:
 		find_best_allocation(child,values,alloc,indv_erg,n_agents,n_obj)
 	values.pop()
+
+def update_upper(node,upper):
+	indv_erg = []
+	temp = node
+	while(temp):
+		indv_erg = indv_erg + temp.indv_erg
+		temp = temp.parent
+	if upper > max(indv_erg):
+		print("***updating upper bound")
+		upper = max(indv_erg)
+	return upper
 
 def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 	#Allocate based on a circle around the agent and calculating the information in that region
@@ -191,74 +200,11 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 	print("The final allocations are as follows: ", allocation)
 	return allocation
 
-def greedy_alloc_without_clustering(problem, n_agents,node = None, sensor_footprint = 15):
-    #Allocate based on information in a window centered around the agent
-
-    n_obj = len(problem.pdfs)
-    agents_allotted = []
-    maps_allotted = []
-    if node:
-        current_node = node
-        while current_node.parent:
-            agents_allotted.append(current_node.agent)
-            maps_allotted = maps_allotted + list(current_node.tasks)
-            current_node = current_node.parent
-
-    if len(agents_allotted) == n_agents:
-        print("all agents are allotted")
-        return -1
-
-    agent_locs = []
-    for i in range(n_agents):
-        if i in agents_allotted:
-            agent_locs.append((-1,-1))
-        else:
-            agent_locs.append((round(problem.s0[0+i*3]*100),round(problem.s0[1+i*3]*100)))
-
-    agent_scores = np.zeros((n_agents,n_obj))
-
-    # Calculate how much information agent i gets when allotted map p
-
-    for i in range(n_agents):
-        if i in agents_allotted:
-            continue
-
-        x_min = max(agent_locs[i][0]-sensor_footprint,0)
-        x_max = min(agent_locs[i][0]+sensor_footprint,100)
-
-        y_min = max(agent_locs[i][1]-sensor_footprint,0)
-        y_max = min(agent_locs[i][1]+sensor_footprint,100)
-
-        for p in range(n_obj):
-            if p in maps_allotted:
-                continue
-            agent_scores[i][p] = np.sum(problem.pdfs[p][y_min:y_max,x_min:x_max])
-
-    allocation = {new_list: [] for new_list in range(n_agents)}
-
-    agents_assigned = np.zeros(n_agents)
-    print("agent scores: ", agent_scores)
-
-    for i in range(n_obj):
-        if i in maps_allotted:
-            continue
-        k = 0
-
-        # Sort the amount of information on a map for different agents in descending order
-        map_scores = [a[i] for a in agent_scores]
-        info = sorted(map_scores, reverse=True) 
-        found = False
-        while not found:
-            idx = map_scores.index(info[k]) # Free agent with max info on this map
-            if (agents_assigned[idx] > 0 and np.count_nonzero(agents_assigned == 0) == n_obj - sum(agents_assigned)) or idx in agents_allotted:
-                k += 1
-            else:
-                allocation[idx] = allocation[idx] + [i]
-                found = True
-                agents_assigned[idx] += 1
-        
-    print("Incumbent allocation: ", allocation)
-    return allocation
+def get_subsets(s):
+    subsets = []
+    for i in range(1,len(s)):
+        subsets = subsets + list(itertools.combinations(s, i))
+    return subsets
 
 def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 	start_time = time.time()
@@ -302,10 +248,13 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 	print("Initial Upper: ", upper)
 
 	#Start the tree with the root node being [], blank assignment
+	nodes_explored = 0
 	root = Node(None, [], [], [], np.inf, np.inf, [], None)
 	explore_node = [root]
+	agent_alloc_pruned = [[] for _ in range(n_agents)]
 
 	for i in range(n_agents):
+		agent_cluster_erg = {}
 		new_explore_node = []
 		for curr_node in explore_node:
 			alloc_cluster = generate_alloc_nodes(root,curr_node,n_agents,clusters)
@@ -315,31 +264,66 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 					am = am + clusters[ai]
 				node = Node(i, am, a, [], np.inf, np.inf, [], curr_node)
 				prune = False
+				bad_alloc = False
 
-				pdf = np.zeros((100,100))
-				n_maps = len(am)
-				for ai in a:
-					for mapi in clusters[ai]:
-						pdf += (1/n_maps)*pdf_list[mapi]
-				pdf = np.asarray(pdf.flatten())
+				if a not in agent_cluster_erg.keys():
+					subsets = get_subsets(list(a))
+					for s in subsets:
+						if s in agent_alloc_pruned[i]:
+							print("\n**************************Alloc contains subset of bad information map!")
+							agent_alloc_pruned[i].append(a)
+							node.alive = False
+							prune = True
+							nodes_pruned += 1 
+							bad_alloc = True
+							break
+					if bad_alloc:
+						continue
+					agent_cluster_erg[a] = []
 
-				#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-				control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+					pdf = np.zeros((100,100))
+					n_maps = len(am)
+					for ai in a:
+						for mapi in clusters[ai]:
+							pdf += (1/n_maps)*pdf_list[mapi]
+					
+					pdf = np.asarray(pdf.flatten())
 
-				for p in a:
-					for mapi in clusters[p]:
-						pdf_indv = np.asarray(pdf_list[mapi].flatten())
-						EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
-						erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
-						if erg > upper:
+					#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
+					control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+
+					for p in a:
+						for mapi in clusters[p]:
+							pdf_indv = np.asarray(pdf_list[mapi].flatten())
+							EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+							erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
+							agent_cluster_erg[a].append(erg)
+							if erg > upper:
+								node.alive = False
+								prune = True
+								print("Don't explore further")
+								nodes_pruned += 1 
+								agent_alloc_pruned[i].append(a)
+								break
+							node.indv_erg.append(erg)
+						if prune:
+							break
+				else:
+					print("\nAlready saw this allocation!")
+					for e in agent_cluster_erg[a]:
+						if e > upper:
 							node.alive = False
 							prune = True
 							print("Don't explore further")
 							nodes_pruned += 1 
 							break
-						node.indv_erg.append(erg)
+						node.indv_erg.append(e)
+				if node.depth == n_agents:
+					nodes_explored += 1
+					if(node.alive):
+						upper = update_upper(node,upper)
 				if not prune:
-					# print("Not pruning this node")
+					print("Not pruning this node")
 					node.cluster = a
 					node.tasks = am
 					curr_node.children.append(node)
@@ -412,12 +396,7 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 	for i in range(1, len(pdfs)+1):
 		KM = KMeans(n_clusters = i, max_iter = 500, random_state=0)
 		KM.fit(data)
-		cluster_labels = KM.labels_
-		if len(KM.cluster_centers_) == 1 or len(KM.cluster_centers_) == len(pdfs):
-			s_score.append(-1)
-		else:
-			silhouette_avg = silhouette_score(data,cluster_labels)
-			s_score.append(silhouette_avg)
+		# cluster_labels = KM.labels_
 		cost.append(KM.inertia_)
 	x = np.arange(1,len(pdfs)+1)
 	kn = KneeLocator(x, cost, curve='convex', direction='decreasing', online=True, S=1)
@@ -480,6 +459,8 @@ if __name__ == "__main__":
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG
 		indv_erg_best[file] = indv_erg_OG
+
+		breakpoint()
 
 		# np.save("BB_similarity_clustering_random_maps_runtime_4_agents_remaining.npy", run_times)
 		# np.save("BB_similarity_clustering_random_maps_best_alloc_4_agents_remaining.npy", best_allocs)
