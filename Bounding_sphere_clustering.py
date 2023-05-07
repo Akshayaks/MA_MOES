@@ -263,9 +263,8 @@ def bounding_sphere_clustering(problem,n_agents):
     print("The best clustering according to minmax metric: ", best_clustering)
     # breakpoint()
     # print("Final allocation: ", final_allocation)
-    # runtime = time.time() - start_time
-    return best_clustering #,runtime,per_leaf_prunes,indv_radius[min_idx]
-
+    runtime = time.time() - start_time
+    return best_clustering,runtime
 
 
 if __name__ == "__main__":
@@ -282,34 +281,40 @@ if __name__ == "__main__":
     best_alloc_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
     best_alloc_sim = best_alloc_sim.ravel()[0]
 
-    alloc_clustering = np.load("./Results_npy_files/Best_clustering_minimal_bounding_sphere_4_agents.npy",allow_pickle=True)
+    alloc_clustering = np.load("./Best_clustering_minimal_bounding_sphere_more_than_7.npy",allow_pickle=True)
     alloc_clustering = alloc_clustering.ravel()[0]
 
     best_clustering = {}
+    runtimes = {}
+    count = 0
 
     # start_pos = np.load("./start_pos_ang_random_4_agents.npy",allow_pickle=True)
     for file in os.listdir("build_prob/random_maps/"):
         
         pbm_file = "build_prob/random_maps/"+file
-        # if file not in best_alloc_bb.keys() or file not in best_alloc_sim.keys():
+        # if file not in best_alloc_bb.keys() or file not in best_alloc_sim.keys() or file not in alloc_clustering.keys():
         #     continue
-        print("\nFile: ", file)
+        # print("\nFile: ", file)
+        # count += 1
         
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
         print("\nNumber of maps: ", len(problem.pdfs))
 
-        if len(problem.pdfs) <= n_agents or len(problem.pdfs) > 7:
-            continue
+        # if len(problem.pdfs) < 8: #< n_agents or len(problem.pdfs) > 7:
+        #     continue
 
-        clusters = bounding_sphere_clustering(problem,n_agents)
+        clusters, runtime = bounding_sphere_clustering(problem,n_agents)
+        runtimes[file] = runtime
 
-        print("Clusters from BB: ", best_alloc_bb[file])
-        print("Clusters from minimal bounding spheres: ", clusters)
-        print("Clusters from similarity clustering: ", best_alloc_sim[file])
+        # print("Clusters from BB: ", best_alloc_bb[file])
+        # print("Clusters from minimal bounding spheres: ", alloc_clustering[file])
+        # print("Clusters from similarity clustering: ", best_alloc_sim[file])
         # breakpoint()
 
-        best_clustering[file] = clusters
+        # best_clustering[file] = clusters
 
-        np.save("Best_clustering_minimal_bounding_sphere.npy",best_clustering)
+        # np.save("Best_clustering_minimal_bounding_sphere_more_than_7.npy",best_clustering)
+        np.save("Runtime_minimal_bounding_sphere_4_agents.npy",runtimes)
+    # print("Total number of tests: ", count)
 
 
