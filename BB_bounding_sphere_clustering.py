@@ -273,17 +273,17 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 		new_explore_node = []
 		for curr_node in explore_node:
 			alloc_cluster = generate_alloc_nodes(root,curr_node,n_agents,clusters)
-			print("Generated allocations: ", alloc_cluster)
+			# print("Generated allocations: ", alloc_cluster)
 			for a in alloc_cluster:
-				print("a: ", a)
+				# print("a: ", a)
 				am = []
 				for ai in a:
-					print("ai: ", ai)
-					print("clusters[ai]: ", clusters[ai])
+					# print("ai: ", ai)
+					# print("clusters[ai]: ", clusters[ai])
 					# am = am + clusters[ai]
 					am = np.concatenate((am,clusters[ai]),axis=None)
-					print("am: ", am)
-				print("Maps assigned to the agent: ", am)
+				# 	print("am: ", am)
+				# print("Maps assigned to the agent: ", am)
 				# breakpoint()
 				node = Node(i, am, a, [], np.inf, np.inf, [], curr_node)
 				prune = False
@@ -302,7 +302,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 							break
 					if bad_alloc:
 						continue
-					print("Not a bad alloc")
+					# print("Not a bad alloc")
 					agent_cluster_erg[a] = []
 
 					pdf = np.zeros((100,100))
@@ -325,7 +325,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 							if erg > upper:
 								node.alive = False
 								prune = True
-								print("Don't explore further")
+								# print("Don't explore further")
 								nodes_pruned += 1 
 								agent_alloc_pruned[i].append(a)
 								break
@@ -333,12 +333,12 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 						if prune:
 							break
 				else:
-					print("\nAlready saw this allocation!")
+					# print("\nAlready saw this allocation!")
 					for e in agent_cluster_erg[a]:
 						if e > upper:
 							node.alive = False
 							prune = True
-							print("Don't explore further")
+							# print("Don't explore further")
 							nodes_pruned += 1 
 							break
 						node.indv_erg.append(e)
@@ -347,7 +347,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 					if(node.alive):
 						upper = update_upper(node,upper)
 				if not prune:
-					print("Not pruning this node")
+					# print("Not pruning this node")
 					node.cluster = a
 					node.tasks = am
 					curr_node.children.append(node)

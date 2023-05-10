@@ -167,6 +167,8 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
             axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
             if tj != None:
               axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color=colors[k],linewidth=2)
+            if ref != None:
+              axs[i,j].plot(ref[l][:,0]*100,ref[l][:,1]*100,'g--',linewidth=2,)
             break
         l += 1
         if l == n_obj:

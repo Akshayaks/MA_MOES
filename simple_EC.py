@@ -28,7 +28,7 @@ def simple_EC():
 
 	print("Agent start positions allotted:", problem.s0)
 
-	display_map(problem,problem.s0)
+	# display_map(problem,problem.s0)
 
 	min_erg = []
 	max_erg = []
@@ -108,15 +108,18 @@ def simple_EC():
 
 # cProfile.run("simple_EC()")
 
-import cProfile, pstats, io
-from pstats import SortKey
+# import cProfile, pstats, io
+# from pstats import SortKey
 
-pr = cProfile.Profile()
-pr.enable()
-simple_EC()
-pr.disable()
-s = io.StringIO()
-sortby = SortKey.CUMULATIVE
-ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-ps.print_stats()
-print(s.getvalue())
+# pr = cProfile.Profile()
+# pr.enable()
+# simple_EC()
+# pr.disable()
+# s = io.StringIO()
+# sortby = SortKey.CUMULATIVE
+# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+# ps.print_stats()
+# print(s.getvalue())
+
+if __name__ == "__main__":
+	simple_EC()

@@ -10,6 +10,7 @@ import ergodic_metric
 import time
 from utils import *
 from explicit_allocation import *
+from miniball import miniball
 
 np.random.seed(101)
 
@@ -202,7 +203,22 @@ def get_subsets(s):
         subsets = subsets + list(itertools.combinations(s, i))
     return subsets
 
-def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True, scalarize=False):
+# Do we need to normalize the pdf_FC we get by using the center of the minimal bounding sphere?
+def get_minimal_bounding_sphere(pdf_list,nA,pix):
+    FC = []
+    for pdf in pdf_list:
+        EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
+        FC.append(EC.phik*np.sqrt(EC.lamk))
+    res = miniball(np.asarray(FC,dtype=np.double))
+    pdf_FC = res["center"]
+    # pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+    minmax = res["radius"]
+    # print(res['radius'])
+    # breakpoint()
+
+    return pdf_FC, minmax
+
+def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True, scalarize=False, Bounding_sphere=False):
 
     start_time = time.time()
     pbm_file_complete = "./build_prob/random_maps/" + pbm_file
@@ -241,22 +257,35 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
     nodes_pruned = 0
     nodes_explored = 0
 
+    pdf_FC = np.zeros((100,1))
+    pdf = np.zeros((100,100))
+
     #Find the upper bound for the incumbent solution
     for k,v in incumbent.items():
         if len(v) > 1:
-            if scalarize:
-                pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+            # if scalarize:
+            #     pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+            if Bounding_sphere:
+                print("Computing the center of the minimal bounding sphere")
+                pdf_FC, _ = get_minimal_bounding_sphere([pdf_list[a] for a in v],problem.nA,problem.pix)
+                # breakpoint()
             else:
+                print("Computing weighted average scalarized map")
                 pdf = np.zeros((100,100))
                 for a in v:
                     pdf += (1/len(v))*pdf_list[a]
         else:
+            print("Single information map")
             pdf = pdf_list[v[0]]
 
+        # if not Bounding_sphere:
         pdf = np.asarray(pdf.flatten())
         
-        # Just run ergodicity optimization for fixed iterations to get ergodic trajectory 
-        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+        # Just run ergodicity optimization for fixed iterations to get ergodic trajectory
+        if Bounding_sphere:
+            control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_FC)
+        else: 
+            control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
         
         # Calculate individual ergodicities using the gotten trajectory
         for p in v:
@@ -268,6 +297,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
     print("Incumbent allocation: ", incumbent)
     print("Incumber Ergodicities: ", incumbent_erg)
     print("Initial Upper: ", upper)
+    # breakpoint()
 
     #Start the tree with the root node being [], blank assignment
     root = Node(None, [], [], np.inf, np.inf, [], None)
@@ -325,17 +355,23 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
                     if len(a) > 1:
                         if scalarize:
                             pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
+                        elif Bounding_sphere:
+                            pdf_FC, _ = get_minimal_bounding_sphere([pdf_list[ai] for ai in a],problem.nA,problem.pix)
                         else:
                             pdf = np.zeros((100,100))
                             for j in a:
                                 pdf += (1/len(a))*pdf_list[j]
                     else:
+                        print("Single information map")
                         pdf = pdf_list[a[0]]
 
                     pdf = np.asarray(pdf.flatten())
 
                     #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-                    control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+                    if Bounding_sphere and len(a) > 1:
+                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_FC)
+                    else:
+                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
                     #Can have a heuristic to show the order in which to evaluate the indv ergodicities
                     for p in a:
@@ -343,6 +379,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
                         EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
                         erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
                         agent_map_erg[a].append(erg)
+                        print("ERg: ", erg)
             
                         if erg > upper:
                             if len(a) == 1:
@@ -535,7 +572,7 @@ if __name__ == "__main__":
     n_scalar = 10
     run_times = {}
     best_allocs = {}
-    per_leaf_prunes = {}
+    per_leaf_prunes_list = {}
     indv_erg_best = {}
 
     start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
@@ -544,37 +581,38 @@ if __name__ == "__main__":
         print("\nFile: ", pbm_file)
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        if len(problem.pdfs) != n_agents:
+        if len(problem.pdfs) < n_agents+1 or len(problem.pdfs) > 6:
             continue
 
-        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False, scalarize=False)
-        # print("file: ", file)
-        # print("Final allocation: ", final_allocation)
-        # print("Runtime: ", runtime)
-        # print("per pruned: ", per_leaf_prunes)
+        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False, scalarize=False, Bounding_sphere=True)
+        print("file: ", file)
+        print("Final allocation: ", final_allocation)
+        print("Runtime: ", runtime)
+        print("per pruned: ", per_leaf_prunes)
+        # breakpoint()
 
-        # run_times[pbm_file] = runtime
-        # best_allocs[pbm_file] = final_allocation
-        # per_leaf_prunes[pbm_file] = per_leaf_prunes
-        # indv_erg_best[pbm_file] = indv_erg
+        run_times[pbm_file] = runtime
+        best_allocs[pbm_file] = final_allocation
+        per_leaf_prunes_list[pbm_file] = per_leaf_prunes
+        indv_erg_best[pbm_file] = indv_erg
 
-        trajectories = find_traj(file,final_allocation,problem,start_pos)
+        # trajectories = find_traj(file,final_allocation,problem,start_pos)
 
-        tj = []
-        for i in range(len(trajectories)):
-            tj.append(trajectories[i][1])
+        # tj = []
+        # for i in range(len(trajectories)):
+        #     tj.append(trajectories[i][1])
 
-        display_map(problem,start_pos.item().get(file),final_allocation,tj=tj)
+        # display_map(problem,start_pos.item().get(file),final_allocation,tj=tj)
 
-        feasible_trajectories = collision_check(trajectories,final_allocation,problem)
+        # feasible_trajectories = collision_check(trajectories,final_allocation,problem)
 
-        print("Checking if the feasible trajectories is indeed collision free after modification")
+        # print("Checking if the feasible trajectories is indeed collision free after modification")
 
-        new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
+        # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
 
-        # np.save("BB_opt_random_maps_sparse_runtime_4_agents.npy", run_times)
-        # np.save("BB_opt_best_alloc_random_maps_sparse_4_agents.npy",best_allocs)
-        # np.save("BB_opt_per_leaf_pruned_random_maps_sparse_4_agents.npy",per_leaf_prunes)
-        # np.save("BB_opt_indv_erg_random_maps_sparse_4_agents.npy", indv_erg_best)
+        # np.save("BB_opt_random_maps_random_runtime_4_agents_sphere.npy", run_times)
+        # np.save("BB_opt_best_alloc_random_maps_sparse_4_agents_sphere.npy",best_allocs)
+        # np.save("BB_opt_per_leaf_pruned_random_maps_sparse_4_agents_sphere.npy",per_leaf_prunes_list)
+        # np.save("BB_opt_indv_erg_random_maps_sparse_4_agents_sphere.npy", indv_erg_best)
 
 

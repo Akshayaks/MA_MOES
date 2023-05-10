@@ -1,18 +1,14 @@
 
-import numpy as onp
-import sys
-
+import numpy as np
 from jax import vmap, jit, grad
-import jax.numpy as np
+import jax.numpy as jnp
 from jax.lax import scan
 from functools import partial
-import pdb
-from sklearn.preprocessing import normalize
 
 rob_vel = 0.8
 def fDyn(x, u): # dynamics of the robot - point mass
-	xnew = x + np.array([np.tanh(u[0]),np.tanh(u[0]),10*u[1]])
-	# xnew = x + np.array([0.8,0.8,10*u[1]])
+	xnew = x + jnp.array([jnp.tanh(u[0]),jnp.tanh(u[0]),10*u[1]])
+	# xnew = x + jnp.array([0.8,0.8,10*u[1]])
 	return xnew, x
 
 def fDiffDrive(x0, u):
@@ -20,18 +16,18 @@ def fDiffDrive(x0, u):
 	x0 = (x,y,theta)
 	u = (v,w)
 	"""
-	# x = x0 + np.array([np.cos(x0[2])*np.abs(u[0]), np.sin(x0[2])*np.abs(u[0]), u[1]])
-	u = 0.3*np.tanh(u) #Limit the maximum velocity to 1
-	x = x0 + np.array([np.cos(x0[2])*np.abs(u[0]), np.sin(x0[2])*np.abs(u[0]), 10*u[1]])
+	# x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), u[1]])
+	u = 0.3*jnp.tanh(u) #Limit the maximum velocity to 1
+	x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), 10*u[1]])
 	return x, x0
 
 def get_hk(k): # normalizing factor for basis function
-	_hk = np.array((2. * k + onp.sin(2 * k))/(4. * k))
-	_hk = _hk.at[onp.isnan(_hk)].set(1.)	
-	return onp.sqrt(onp.prod(_hk))
+	_hk = jnp.array((2. * k + np.sin(2 * k))/(4. * k))
+	_hk = _hk.at[np.isnan(_hk)].set(1.)	
+	return np.sqrt(np.prod(_hk))
 
 def fk(x, k): # basis function
-    return np.prod(np.cos(x*k))
+    return jnp.prod(jnp.cos(x*k))
 
 def GetTrajXY(u, x0):
 	"""
@@ -58,33 +54,33 @@ class ErgCalc(object):
 		self.fk_vmap = lambda _x, _k: vmap(fk, in_axes=(0,None))(_x, _k)
 
 		# fourier indices
-		k1, k2 = np.meshgrid(*[np.arange(0, n_fourier, step=1)]*2)
-		k = np.stack([k1.ravel(), k2.ravel()]).T
-		self.k = np.pi*k
+		k1, k2 = jnp.meshgrid(*[jnp.arange(0, n_fourier, step=1)]*2)
+		k = jnp.stack([k1.ravel(), k2.ravel()]).T
+		self.k = jnp.pi*k
 
 		# lambda, the weights of different bands.
-		self.lamk = (1.+np.linalg.norm(self.k/np.pi,axis=1)**2)**(-4./2.)
+		self.lamk = (1.+jnp.linalg.norm(self.k/jnp.pi,axis=1)**2)**(-4./2.)
 
 		# the normalization factor
 		hk = []
 		for ki in k:
 			hk.append(get_hk(ki))
-		self.hk = np.array(hk)
+		self.hk = jnp.array(hk)
 
 		# compute phik
 		if isinstance(nPix,int) == True:
-			X,Y = np.meshgrid(*[np.linspace(0,1,num=self.nPix)]*2)
+			X,Y = jnp.meshgrid(*[jnp.linspace(0,1,num=self.nPix)]*2)
 		else: #Using this when using a window around the agent and the window is not a square
-			X,Y = np.meshgrid(np.linspace(0,1,num=self.nPix[0]),np.linspace(0,1,num=self.nPix[1]))
-		_s = np.stack([X.ravel(), Y.ravel()]).T
+			X,Y = jnp.meshgrid(jnp.linspace(0,1,num=self.nPix[0]),jnp.linspace(0,1,num=self.nPix[1]))
+		_s = jnp.stack([X.ravel(), Y.ravel()]).T
 		# print("nPix: ", self.nPix)
 		# print("Shape of vmap: ",vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k).shape)
-		phik = np.dot(vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k), pdf) #vmap(p)(_s)
+		phik = jnp.dot(vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k), pdf) #vmap(p)(_s)
 		phik = phik/phik[0]
 		self.phik = phik/self.hk		  
 
 		# for reconstruction
-		self.phik_recon = np.dot(self.phik, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
+		self.phik_recon = jnp.dot(self.phik, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
 		
 		# to compute gradient func
 		self.gradient = jit(grad(self.fourier_ergodic_loss))
@@ -92,16 +88,16 @@ class ErgCalc(object):
 		return
 	
 	def get_recon(self, FC):
-		X,Y = np.meshgrid(*[np.linspace(0,1,num=self.nPix)]*2)
-		_s = np.stack([X.ravel(), Y.ravel()]).T
-		return np.dot(FC, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
+		X,Y = jnp.meshgrid(*[jnp.linspace(0,1,num=self.nPix)]*2)
+		_s = jnp.stack([X.ravel(), Y.ravel()]).T
+		return jnp.dot(FC, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
 
 	def get_ck(self, tr):
 		"""
 		given a trajectory tr, compute fourier coeffient of its spatial statistics.
 		k is the number of fourier coeffs.
 		"""
-		ck = np.mean(vmap(partial(self.fk_vmap, tr))(self.k), axis=1)
+		ck = jnp.mean(vmap(partial(self.fk_vmap, tr))(self.k), axis=1)
 		ck = ck / self.hk
 		return ck
 
@@ -127,14 +123,14 @@ class ErgCalc(object):
 		
 		traj_cost = 0 
 		for i in range(self.n_agents):
-			traj_cost += np.mean((trajectories[i] - np.array([0.5,0.5]))**8)
-		ergodicity = np.sum(self.lamk*np.square(self.phik - ck)) + 3e-2 * np.mean(u**2) + traj_cost
+			traj_cost += jnp.mean((trajectories[i] - jnp.array([0.5,0.5]))**8)
+		ergodicity = jnp.sum(self.lamk*jnp.square(self.phik - ck)) + 3e-2 * jnp.mean(u**2) + traj_cost
 		return ergodicity
 	
 	def fourier_ergodic_loss_traj(self,traj):
 		ck = self.get_ck(traj)
-		traj_cost = np.mean((traj - np.array([0.5,0.5]))**8)
-		ergodicity = np.sum(self.lamk*np.square(self.phik - ck)) + traj_cost
+		traj_cost = jnp.mean((traj - jnp.array([0.5,0.5]))**8)
+		ergodicity = jnp.sum(self.lamk*jnp.square(self.phik - ck)) + traj_cost
 		return ergodicity
 
 	def traj_stat(self, u, x0):
@@ -142,7 +138,7 @@ class ErgCalc(object):
 		"""
 		xf, tr = GetTrajXY(u, x0)
 		ck = self.get_ck(tr)
-		X,Y = np.meshgrid(*[np.linspace(0,1,num=self.nPix)]*2)
-		_s = np.stack([X.ravel(), Y.ravel()]).T
-		pdf = np.dot(ck, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
+		X,Y = jnp.meshgrid(*[jnp.linspace(0,1,num=self.nPix)]*2)
+		_s = jnp.stack([X.ravel(), Y.ravel()]).T
+		pdf = jnp.dot(ck, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
 		return pdf
