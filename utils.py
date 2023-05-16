@@ -6,8 +6,6 @@ from more_itertools import set_partitions
 import itertools
 import math
 import os
-import cProfile
-import re
 
 np.random.seed(100)
 
@@ -61,83 +59,36 @@ def generate_allocations(n_obj,n_agents):
   alloc_comb = list(itertools.chain.from_iterable(alloc_comb))
   return alloc_comb
 
+def display_map_simple(pbm,start_pos,pbm_file=None,tj=None,title=None):
+    x = np.linspace(0,100,num=100)
+    y = np.linspace(0,100,num=100)
+    X,Y = np.meshgrid(x,y)
 
-'''
-Display function that can take any number of maps and plot the trajectory if given
-'''
-def display_map_results(pbm,start_pos,pbm_file=None,tj=None,window=None,r=None,title=None):
-  x = np.linspace(0,100,num=100)
-  y = np.linspace(0,100,num=100)
-  X,Y = np.meshgrid(x,y)
+    pbm.s0 = start_pos
 
-  pbm.s0 = start_pos
+    n_obj = len(pbm.pdfs)
+    n_col = math.ceil(n_obj/2)
+    if n_col == 1:
+      n_col += 1
+    n_agents = int(len(start_pos)/3)
 
-  n_obj = len(pbm.pdfs)
-  n_col = math.ceil(n_obj/2)
-  if n_col == 1:
-    n_col += 1
-  n_agents = int(len(start_pos)/3)
-  print("Number of agents: ", n_agents)
+    fig, axs = plt.subplots(2, n_col,figsize=(5,5))
+    l = 0
+    colors = ["red", "blue", "green", "yellow"] #Colors for each agent
 
-  fig, axs = plt.subplots(2, n_col,figsize=(5,5))
-  l = 0
-  color = ["green","red","yellow","blue","cyan","#ee00ff","#ffa500","#a020f0","#ffc0cb","#007ccc"]
-  colors = ["red", "blue", "green"]
+    for i in range(2):
+      for j in range(n_col):
+        # print(l)
+        axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
+        axs[i,j].set_title("Info Map "+str(l+1))
 
-  for i in range(2):
-    for j in range(n_col):
-      print(l)
-      axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
-      axs[i,j].set_title("Info Map "+str(l+1))
-      for k in range(n_agents):
-        # axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
-        # if l == 1:
-        #   axs[i,j].plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[2], markeredgecolor=colors[2])
-        # elif l == 2:
-        #   axs[i,j].plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[0], markeredgecolor=colors[0])
-        # elif l == 0:
-        #   axs[i,j].plot(pbm.s0[1*3]*100,pbm.s0[1*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[1], markeredgecolor=colors[1])
-        # elif l == 3:
-        #   axs[i,j].plot(pbm.s0[2*3]*100,pbm.s0[2*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[2], markeredgecolor=colors[2])
-        # elif l == 4:
-        #   axs[i,j].plot(pbm.s0[0*3]*100,pbm.s0[0*3+1]*100, marker="o", markersize=7, markerfacecolor=colors[0], markeredgecolor=colors[0])
-        # axs[i,j].plot(pbm.s0[l*3]*100,pbm.s0[l*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[l], markeredgecolor=colors[l])
-        axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=color[k], markeredgecolor=color[k])
-        if window:
-          w_size = 15 #window[l,k]
-          x0 = pbm.s0[k*3]*100
-          y0 = pbm.s0[k*3+1]*100
-          h1 = max(0,y0-w_size)
-          h2 = min(100,y0+w_size)
-          w1 = max(0,x0-w_size)
-          w2 = min(100,x0+w_size)
-          axs[i,j].add_patch(Rectangle((w1,h1),
-                           w2-w1, h2-h1,
-                           fc ='none', 
-                           ec ='w',
-                           lw = 1) )
-        if tj != None:
-          if l == 0:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2) #green
-          elif l == 1:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="blue",linewidth=2) #red
-          elif l == 2:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2) #blue
-          elif l == 3:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="green",linewidth=2)
-          else:
-            axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color="red",linewidth=2)
-      l += 1
-      if l == n_obj:
-        break
-    if l == n_obj:
-      break
-  if title:
-    fig.suptitle(title)
-  if pbm_file:
-    plt.savefig("./random_maps/bb_"+pbm_file+".jpg")
-  plt.show()
-  return
+        for k in range(n_agents):
+          axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
+    if title:
+      fig.suptitle(title)
+    if pbm_file:
+      plt.savefig("./random_maps/bb_"+pbm_file+".jpg")
+    plt.show()
 
 def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,collision_points=None):
     x = np.linspace(0,100,num=100)

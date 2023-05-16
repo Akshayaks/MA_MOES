@@ -414,7 +414,7 @@ def get_minimal_bounding_sphere(pdf_list,nA,pix):
         FC.append(EC.phik*np.sqrt(EC.lamk))
     res = miniball(np.asarray(FC,dtype=np.double))
     pdf_FC = res["center"]
-    # pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
     minmax = res["radius"]
     # print(res['radius'])
     # breakpoint()
@@ -539,7 +539,7 @@ def bounding_sphere_clustering(problem,n_agents):
 
             for a in alloc_comb:                
                 node = ClusteringNode(a,upper,[],curr_node)
-                # print("Combination for this cluster: ", a)
+                print("Combination for this cluster: ", a)
                 
                 prune = False
 
@@ -558,7 +558,7 @@ def bounding_sphere_clustering(problem,n_agents):
                     # The radius will almost be equal to zero when only one information map is considered
                     _, radius = get_minimal_bounding_sphere([pdf_list[j] for j in a],problem.nA,problem.pix)
                     node.radius = radius
-                    # print("Radius: ", node.radius)
+                    print("Radius: ", node.radius)
                     if radius > upper:
                         # print("Pruning the node")
                         node.alive = False
@@ -609,52 +609,59 @@ def bounding_sphere_clustering(problem,n_agents):
     return best_clustering,runtime
 	
 if __name__ == "__main__":
-    n_agents = 4
-    n_scalar = 10
-    cnt = 0
-    run_times = {}
-    best_allocs = {}
-    indv_erg_best = {}
+	n_agents = 4
+	n_scalar = 10
+	cnt = 0
+	run_times = {}
+	best_allocs = {}
+	indv_erg_best = {}
 
-    # best_alloc_done = np.load("./BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
-    # best_alloc_done = best_alloc_done.ravel()[0]
+	best_alloc_done = np.load("./BB_opt_best_alloc_random_maps_4_agents_sphere.npy",allow_pickle=True)
+	best_alloc_done = best_alloc_done.ravel()[0]
 
-    for file in os.listdir("build_prob/random_maps/"):
-        pbm_file = "build_prob/random_maps/"+file
+	indv_done = np.load("./BB_opt_indv_erg_random_maps_4_agents_sphere.npy",allow_pickle=True)
+	indv_done = indv_done.ravel()[0]
 
-        problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
+	for file in os.listdir("build_prob/random_maps/"):
+		print("File: ", file)
+		pbm_file = "build_prob/random_maps/"+file
 
-        if len(problem.pdfs) < n_agents:
-            print("Less than 4")
-            continue
+		problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
-        problem.s0 = start_pos.item().get(file)
+		if len(problem.pdfs) < n_agents:
+			print("Less than 4")
+			continue
 
-        clusters_dict, runtime_clustering = bounding_sphere_clustering(problem,n_agents)
-        print("The clusters are: ", clusters_dict)
-        
-        clusters = []
-        for i in range(n_agents):
-            clusters.append(np.asarray(clusters_dict[i]))
-        print("Clusters: ", clusters)
-        # breakpoint()
-        
-        best_alloc_OG, indv_erg_OG, start_pos_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
-        
-        print("File: ", file)
-        print("\nBest allocation is: ", best_alloc_OG)
-        print("\nBest Individual ergodicity: ", indv_erg_OG)
-        
-        run_times[file] = runtime
-        best_allocs[file] = best_alloc_OG
-        indv_erg_best[file] = indv_erg_OG
+		start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
+		problem.s0 = start_pos.item().get(file)
 
-        # breakpoint()
+		clusters_dict, runtime_clustering = bounding_sphere_clustering(problem,n_agents)
+		print("The clusters are: ", clusters_dict)
 
-        np.save("BB_bounding_sphere_clustering_random_maps_runtime_4_agents_remaining.npy", run_times)
-        np.save("BB_bounding_sphere_clustering_random_maps_best_alloc_4_agents_remaining.npy", best_allocs)
-        np.save("BB_bounding_sphere_clustering_random_maps_indv_erg_4_agents_remaining.npy", indv_erg_best)
+		clusters = []
+		for i in range(n_agents):
+			clusters.append(np.asarray(clusters_dict[i]))
+		print("Clusters: ", clusters)
+		# breakpoint()
+
+		best_alloc_OG, indv_erg_OG, start_pos_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
+
+		print("File: ", file)
+		print("\nBest allocation is: ", best_alloc_OG)
+		print("\nBest Individual ergodicity: ", max(indv_erg_OG))
+
+		print("Alloc: ", best_alloc_done[pbm_file])
+		print("max_erg: ", max(indv_done[pbm_file]))
+
+		run_times[file] = runtime
+		best_allocs[file] = best_alloc_OG
+		indv_erg_best[file] = indv_erg_OG
+
+		breakpoint()
+
+		# np.save("BB_bounding_sphere_clustering_random_maps_runtime_4_agents_remaining.npy", run_times)
+		# np.save("BB_bounding_sphere_clustering_random_maps_best_alloc_4_agents_remaining.npy", best_allocs)
+		# np.save("BB_bounding_sphere_clustering_random_maps_indv_erg_4_agents_remaining.npy", indv_erg_best)
 
 
 

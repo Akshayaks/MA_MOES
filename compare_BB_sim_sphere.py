@@ -5,8 +5,8 @@ if __name__ == "__main__":
 
     n_agents = 4
 
-    best_alloc_bb = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
-    # best_alloc_bb = np.load("./BB_opt_best_alloc_random_maps_sparse_4_agents_sphere.npy",allow_pickle=True)
+    # best_alloc_bb = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
+    best_alloc_bb = np.load("./BB_opt_best_alloc_random_maps_4_agents_sphere.npy",allow_pickle=True)
     best_alloc_bb = best_alloc_bb.ravel()[0]
 
     best_alloc_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
@@ -17,8 +17,8 @@ if __name__ == "__main__":
 
     #####################################################
 
-    indv_erg_bb = np.load("./results_canebrake/BB_opt_indv_erg_4_agents.npy",allow_pickle=True)
-    # indv_erg_bb = np.load("./BB_opt_indv_erg_random_maps_sparse_4_agents_sphere.npy",allow_pickle=True)
+    # indv_erg_bb = np.load("./results_canebrake/BB_opt_indv_erg_4_agents.npy",allow_pickle=True)
+    indv_erg_bb = np.load("./BB_opt_indv_erg_random_maps_4_agents_sphere.npy",allow_pickle=True)
     indv_erg_bb = indv_erg_bb.ravel()[0]
 
     indv_erg_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_indv_erg_4_agents.npy",allow_pickle=True)
@@ -29,7 +29,8 @@ if __name__ == "__main__":
 
     ######################################################
 
-    runtime_bb = np.load("./results_canebrake/BB_opt_random_maps_runtime_4_agents.npy",allow_pickle=True)
+    # runtime_bb = np.load("./results_canebrake/BB_opt_random_maps_runtime_4_agents.npy",allow_pickle=True)
+    runtime_bb = np.load("./BB_opt_random_maps_runtime_4_agents_sphere.npy",allow_pickle=True)
     runtime_bb = runtime_bb.ravel()[0]
 
     runtime_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_runtime_4_agents.npy",allow_pickle=True)
@@ -38,6 +39,8 @@ if __name__ == "__main__":
 
     runtime_sphere = np.load("./BB_bounding_sphere_clustering_random_maps_runtime_4_agents.npy",allow_pickle=True)
     runtime_sphere = runtime_sphere.ravel()[0]
+
+    # breakpoint()
 
     count = 0
 
@@ -63,13 +66,13 @@ if __name__ == "__main__":
 
     for file in os.listdir("build_prob/random_maps/"):
         # file = "build_prob/random_maps/" + file
-        if file not in best_alloc_bb.keys() or file not in best_alloc_sim.keys() or file not in best_alloc_sphere.keys():
+        if "build_prob/random_maps/"+file not in best_alloc_bb.keys() or file not in best_alloc_sim.keys() or file not in best_alloc_sphere.keys():
             continue
 
-        if file not in indv_erg_bb.keys() or file not in indv_erg_sim.keys() or file not in indv_erg_sphere.keys():
+        if "build_prob/random_maps/"+file not in indv_erg_bb.keys() or file not in indv_erg_sim.keys() or file not in indv_erg_sphere.keys():
             continue
 
-        if file not in runtime_bb.keys() or file not in runtime_sim.keys() or file not in runtime_sphere.keys():
+        if "build_prob/random_maps/"+file not in runtime_bb.keys() or file not in runtime_sim.keys() or file not in runtime_sphere.keys():
             continue
 
         count += 1
@@ -77,18 +80,18 @@ if __name__ == "__main__":
         matching_sim = True
         matching_sphere = True
 
-        alloc_bb = best_alloc_bb[file]
+        alloc_bb = best_alloc_bb["build_prob/random_maps/"+file]
         alloc_sim = best_alloc_sim[file]
         alloc_sphere = best_alloc_sphere[file]
 
-        erg_bb = indv_erg_bb[file]
+        erg_bb = indv_erg_bb["build_prob/random_maps/"+file]
         erg_sim = indv_erg_sim[file]
         erg_sphere = indv_erg_sphere[file]
 
-        # print("Alloc by BB opt: ", alloc_bb)
-        # print("Alloc by BB sim: ", alloc_sim)
-        # print("Alloc by BB sphere: ", alloc_sphere)
-        # breakpoint()
+        print("Alloc by BB opt: ", alloc_bb)
+        print("Alloc by BB sim: ", alloc_sim)
+        print("Alloc by BB sphere: ", alloc_sphere)
+        breakpoint()
 
         for i in range(n_agents):
             if len(alloc_bb[i]) != len(alloc_sim[i]):
@@ -105,7 +108,7 @@ if __name__ == "__main__":
                 # print("Equivalent sim allocation")
                 eq_alloc_sim += 1
             else:
-                sim_diff_minmax.append(max(indv_erg_sim[file]) - max(indv_erg_bb[file]))
+                sim_diff_minmax.append(max(erg_sim) - max(erg_bb))
                 
         for i in range(n_agents):
             if len(alloc_bb[i]) != len(alloc_sphere[i]):
@@ -122,7 +125,7 @@ if __name__ == "__main__":
                 # print("Equivalent sphere allocation")
                 eq_alloc_sphere += 1
             else:
-                sphere_diff_minmax.append(max(indv_erg_sphere[file]) - max(indv_erg_bb[file]))
+                sphere_diff_minmax.append(max(erg_sphere) - max(erg_bb))
         
         if matching_sim:
             # print("Same BB sim")
@@ -141,6 +144,9 @@ if __name__ == "__main__":
             avg_inc_runtime += (runtime_sphere[file] - runtime_sim[file])/runtime_sim[file]
     
     # print("Length of the output files: ", len(best_alloc_bb), len(best_alloc_sim), len(best_alloc_sphere))
+    print("Minmax diff BB sim: ", sim_diff_minmax)
+    print("Minmax diff BB sphere: ", sphere_diff_minmax)
+    
     print("Total number of test cases considered: ", count)
     print("Number of cases when BB sim matches BB opt: ", same_alloc_sim)
     print("Number of cases when BB sphere matches BB opt: ", same_alloc_sphere)
