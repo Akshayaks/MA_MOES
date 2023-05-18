@@ -14,17 +14,17 @@ import yaml
 with open("agent_profile.yaml", "r") as yamlfile:
     agent_profile = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
-def fDiffDrive0(x0, u, max_speed = 1):
+def fDiffDrive0(x0, u, max_speed = 0.25):
 	"""
 	x0 = (x,y,theta)
 	u = (v,w)
 	"""
-	print("Speed limit: ", max_speed)
+	# print("Speed limit: ", max_speed)
 	u = max_speed * jnp.tanh(u) #Limit the maximum velocity
 	x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), 10*u[1]])
 	return x, x0
 
-def fDiffDrive1(x0, u, max_speed = 5):
+def fDiffDrive1(x0, u, max_speed = 1):
 	"""
 	x0 = (x,y,theta)
 	u = (v,w)
@@ -55,10 +55,11 @@ def fk(x, k): # basis function
 def GetTrajXY(u, x0, max_speed):
     """
     """
-    # fdynamics = fDiffDrive(x0, u[0], max_speed)
-    if max_speed == 1:
+    # fdynamics = lambda x,u: fDiffDrive(x, u, max_speed)
+    # xf, tr0 = scan(fdynamics, x0, u)
+    if max_speed == 0.25:
         xf, tr0 = scan(fDiffDrive0, x0, u)
-    elif max_speed == 5:
+    elif max_speed == 1:
         xf, tr0 = scan(fDiffDrive1, x0, u)
     else: 
         xf, tr0 = scan(fDiffDrive2, x0, u)
@@ -77,7 +78,7 @@ class ErgCalc(object):
 	def __init__(self, pdf, n_agents, agent_type, nA, n_fourier, nPix):
 		# print("Number of agents: ", n_agents)
 		self.n_agents = n_agents
-		print("Agent types: ", agent_type)
+		# print("Agent types: ", agent_type)
 		self.nPix = nPix
 		self.nA = nA
 		self.agent_type = agent_type

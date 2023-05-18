@@ -1,6 +1,8 @@
 import numpy as onp
 import jax.numpy as np
+from jax import vmap
 from jax.experimental import optimizers
+from matplotlib.animation import FuncAnimation
 
 import matplotlib.pyplot as plt
 import ergodic_metric_hetero
@@ -17,9 +19,10 @@ def ErgCover(pdf, n_agents, nA, s0, agent_type, n_fourier, nPix, nIter, ifDispla
 	return a list of control inputs.
 	"""
 	# print("****************************************************************")
-	# print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
+	print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
 	
 	erg_calc = ergodic_metric_hetero.ErgCalc(pdf, n_agents, agent_type, nA, n_fourier, nPix)
+	# breakpoint()
 
 	opt_init, opt_update, get_params = optimizers.adam(1e-3) #Declaring Adam's optimizer
 
@@ -65,13 +68,36 @@ def ErgCover(pdf, n_agents, nA, s0, agent_type, n_fourier, nPix, nIter, ifDispla
 		max_speed = agent_profile["agent_type_speeds"][str(agent_type)]
 		xf, tr = ergodic_metric_hetero.GetTrajXY(u, x0, max_speed)
 		X,Y = np.meshgrid(*[np.linspace(0,1,num=nPix)]*2)
-		plt.contourf(X, Y, erg_calc.phik_recon, levels=np.linspace(np.min(erg_calc.phik_recon), np.max(erg_calc.phik_recon),100), cmap='gray')
+		plt.contourf(X, Y, erg_calc.phik_recon, levels=np.linspace(np.min(erg_calc.phik_recon), np.max(erg_calc.phik_recon),100))#, cmap='gray')
 		# plt.scatter(tr[:,0],tr[:,1], c='r', marker="*:")
 		plt.plot(tr[0,0],tr[0,1], "ro:")
 		plt.plot(tr[:,0],tr[:,1], "r.:")
 		plt.axis("off")
+		
+		plt.savefig("heterogeneous_agents"+str(nA)+"_num_"+str(kkk)+".png", bbox_inches='tight',dpi=200)
 		plt.show()
 		plt.pause(1)
-		# plt.savefig("heterogeneous_agents"+str(nA)+"_num_"+str(kkk)+".png", bbox_inches='tight',dpi=200)
+
+		# tr = tr[:50]
+
+		# fig = plt.figure(figsize=(5,5))
+		# ax = plt.axes(xlim=(0, 1), ylim=(0, 1))
+		# plt.contourf(X, Y, erg_calc.phik_recon, levels=np.linspace(np.min(erg_calc.phik_recon), np.max(erg_calc.phik_recon),100))
+		# line, = ax.plot([], [], 'r.:', lw=3)
+
+		# def animate(n):
+		# 	traj_ck = erg_calc.get_ck(tr[:n])
+		# 	X,Y = np.meshgrid(*[np.linspace(0,1,num=erg_calc.nPix)]*2)
+		# 	_s = np.stack([X.ravel(), Y.ravel()]).T
+		# 	traj_recon = np.dot(traj_ck, vmap(erg_calc.fk_vmap, in_axes=(None, 0))(_s, erg_calc.k)).reshape(X.shape)
+		# 	plt.contourf(X, Y, traj_recon, levels=np.linspace(np.min(traj_recon), np.max(traj_recon),100))
+		# 	line.set_xdata(tr[:n, 0]*1)
+		# 	line.set_ydata(tr[:n, 1]*1)
+		# 	return line,
+
+		# anim = FuncAnimation(fig, animate, frames=tr.shape[0], interval=200)
+		# anim.save('test_trajectory_animation2.gif')
+		# plt.show()
+		
 	return get_params(opt_state), log, i
 

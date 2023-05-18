@@ -17,7 +17,7 @@ def fDiffDrive(x0, u):
 	u = (v,w)
 	"""
 	# x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), u[1]])
-	u = 0.3*jnp.tanh(u) #Limit the maximum velocity to 1
+	u = 1*jnp.tanh(u) #Limit the maximum velocity to 1
 	x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), 10*u[1]])
 	return x, x0
 

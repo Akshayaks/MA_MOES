@@ -221,7 +221,7 @@ def get_minimal_bounding_sphere(pdf_list,nA,pix):
 
     return pdf_FC, minmax
 
-def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, random_start=True, scalarize=False, Bounding_sphere=False):
+def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, random_start=False, scalarize=False, Bounding_sphere=False):
 
     start_time = time.time()
     pbm_file_complete = "./build_prob/random_maps/" + pbm_file
@@ -250,6 +250,9 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
         problem.s0 = start_pos.item().get(pbm_file)
     
     agent_types = agent_categories.item().get(pbm_file)
+    # print("Agent categories: ", agent_categories)
+    # print("Agent types: ", agent_types)
+    # breakpoint()
 
     pdf_list = problem.pdfs
 
@@ -286,7 +289,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
         pdf = np.asarray(pdf.flatten())
         
         # Just run ergodicity optimization for fixed iterations to get ergodic trajectory
-        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], agent_types[k], n_scalar, problem.pix, 1000, True, None, grad_criterion=True)
+        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], agent_types[k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
         print("Erg: ", erg[-1])
         
         # Calculate individual ergodicities using the gotten trajectory
@@ -300,7 +303,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
     print("Incumber Ergodicities: ", incumbent_erg)
     print("Initial Upper: ", upper)
     # return {},0,0,0
-    breakpoint()
+    # breakpoint()
 
     #Start the tree with the root node being [], blank assignment
     root = Node(None, [], [], np.inf, np.inf, [], None)
@@ -372,14 +375,14 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
 
                     #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
                     if Bounding_sphere and len(a) > 1:
-                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_FC)
+                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], agent_types[i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_FC)
                     else:
-                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], agent_types[i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
                     #Can have a heuristic to show the order in which to evaluate the indv ergodicities
                     for p in a:
                         pdf_indv = np.asarray(pdf_list[p].flatten())
-                        EC = ergodic_metric_hetero.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
+                        EC = ergodic_metric_hetero.ErgCalc(pdf_indv,1,agent_types[i],problem.nA,n_scalar,problem.pix)
                         erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
                         agent_map_erg[a].append(erg)
                         print("ERg: ", erg)
@@ -455,7 +458,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
     runtime = time.time() - start_time
     return best_alloc,runtime,per_leaf_prunes,indv_erg[min_idx]
 
-def find_traj(file,alloc,problem,start_pos):
+def find_traj(file,alloc,problem,start_pos,agent_types,agent_profile):
     trajectories = []
     problem.s0 = start_pos.item().get(file)
 
@@ -479,9 +482,10 @@ def find_traj(file,alloc,problem,start_pos):
         pdf = np.asarray(pdf.flatten())
         
         # Just run ergodicity optimization for fixed iterations to get ergodic trajectory 
-        control, _, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+        control, _, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], agent_types[k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
-        trajectories.append(ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k]))
+        speed = agent_profile["agent_type_speeds"][str(agent_types[k])]
+        trajectories.append(ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k],speed))
     
     return trajectories
 
@@ -578,9 +582,9 @@ if __name__ == "__main__":
     indv_erg_best = {}
 
     ## Assign agent types randomly for each test case and each agent ##
-    ## Maximum allowed speed: 1,2 and 3 units per timestep ##
-    #
-    # n_agent_types = 3 
+    # Maximum allowed speed: 1,2 and 3 units per timestep ##
+    
+    # n_agent_types = 2 
     # agent_types = {}
     # for file in os.listdir("./build_prob/random_maps/"):
     #     types = []
@@ -588,14 +592,14 @@ if __name__ == "__main__":
     #         types.append(random.randrange(n_agent_types))
     #     agent_types[file] = types
     # np.save("Agent_types_4_agents.npy",agent_types)
-    #
+    
     ########################################
 
     with open("agent_profile.yaml", "r") as yamlfile:
         agent_profile = yaml.load(yamlfile, Loader=yaml.FullLoader)
     
-    print("Read data: ", agent_profile)
-    breakpoint()
+    # print("Read data: ", agent_profile)
+    # breakpoint()
 
     start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
     agent_type = np.load("./Agent_types_4_agents.npy",allow_pickle=True)
@@ -605,28 +609,38 @@ if __name__ == "__main__":
 
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        if len(problem.pdfs) < n_agents:
+        print("File: ", file)
+
+        if len(problem.pdfs) < n_agents or len(problem.pdfs) > 4:
             continue
+
+        # display_map_simple(problem,start_pos.item().get(file))
 
         final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,agent_type,random_start=False, scalarize=False, Bounding_sphere=False)
         print("file: ", file)
+        print("Agent type: ", agent_type.item().get(file))
         print("Final allocation: ", final_allocation)
         print("Runtime: ", runtime)
         print("per pruned: ", per_leaf_prunes)
-        breakpoint()
+
+        # breakpoint()
 
         run_times[pbm_file] = runtime
         best_allocs[pbm_file] = final_allocation
         per_leaf_prunes_list[pbm_file] = per_leaf_prunes
         indv_erg_best[pbm_file] = indv_erg
 
-        # trajectories = find_traj(file,final_allocation,problem,start_pos)
+        trajectories = find_traj(file,final_allocation,problem,start_pos,agent_type.item().get(file),agent_profile)
 
-        # tj = []
-        # for i in range(len(trajectories)):
-        #     tj.append(trajectories[i][1])
+        # print("Trajectories: ", trajectories)
+        tj = []
+        for i in range(len(trajectories)):
+            tj.append(trajectories[i][1])
 
-        # display_map(problem,start_pos.item().get(file),final_allocation,tj=tj)
+        display_map(problem,start_pos.item().get(file),final_allocation,tj=tj,title=str(agent_type.item().get(file))+file)
+
+        breakpoint()
+        # break
 
         # feasible_trajectories = collision_check(trajectories,final_allocation,problem)
 

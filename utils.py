@@ -79,11 +79,14 @@ def display_map_simple(pbm,start_pos,pbm_file=None,tj=None,title=None):
     for i in range(2):
       for j in range(n_col):
         # print(l)
-        axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
+        axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100)) #, cmap='gray')
         axs[i,j].set_title("Info Map "+str(l+1))
 
         for k in range(n_agents):
           axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
+        l += 1
+        if l == n_obj:
+          break
     if title:
       fig.suptitle(title)
     if pbm_file:
@@ -106,20 +109,25 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     fig, axs = plt.subplots(2, n_col,figsize=(5,5))
     l = 0
     colors = ["red", "blue", "green", "yellow"] #Colors for each agent
+    print("alloc: ", alloc)
+    # breakpoint()
 
     for i in range(2):
       for j in range(n_col):
         print(l)
         axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
         axs[i,j].set_title("Info Map "+str(l+1))
+        # for k in range(n_agents):
+        #   axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
 
         for k in range(n_agents):
+          print(k,alloc[k])
           if l in alloc[k]:
             axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
             if tj != None:
-              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color=colors[k],linewidth=2)
+              axs[i,j].plot(tj[k][:,0]*100,tj[k][:,1]*100,color=colors[k],linewidth=2)
             if ref != None:
-              axs[i,j].plot(ref[l][:,0]*100,ref[l][:,1]*100,'g--',linewidth=2,)
+              axs[i,j].plot(ref[k][:,0]*100,ref[k][:,1]*100,'g--',linewidth=2,)
             break
         l += 1
         if l == n_obj:
