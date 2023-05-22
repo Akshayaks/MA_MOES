@@ -106,7 +106,7 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
       n_col += 1
     n_agents = int(len(start_pos)/3)
 
-    fig, axs = plt.subplots(2, n_col,figsize=(5,5))
+    fig, axs = plt.subplots(2, n_col,figsize=(8,10))
     l = 0
     colors = ["red", "blue", "green", "yellow"] #Colors for each agent
     print("alloc: ", alloc)
@@ -114,20 +114,20 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
 
     for i in range(2):
       for j in range(n_col):
-        print(l)
+        # print(l)
         axs[i,j].contourf(X, Y, pbm.pdfs[l], levels=np.linspace(np.min(pbm.pdfs[l]), np.max(pbm.pdfs[l]),100), cmap='gray')
         axs[i,j].set_title("Info Map "+str(l+1))
         # for k in range(n_agents):
         #   axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
 
         for k in range(n_agents):
-          print(k,alloc[k])
+          # print(k,alloc[k])
           if l in alloc[k]:
             axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
             if tj != None:
-              axs[i,j].plot(tj[k][:,0]*100,tj[k][:,1]*100,color=colors[k],linewidth=2)
+              axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color=colors[k],linewidth=2)
             if ref != None:
-              axs[i,j].plot(ref[k][:,0]*100,ref[k][:,1]*100,'g--',linewidth=2,)
+              axs[i,j].plot(ref[l][:,0]*100,ref[l][:,1]*100,'g--',linewidth=2,)
             break
         l += 1
         if l == n_obj:
@@ -137,10 +137,10 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     if title:
       fig.suptitle(title)
     if pbm_file:
-      plt.savefig("./random_maps/bb_"+pbm_file+".jpg")
+      plt.savefig("./hetero_"+pbm_file+".jpg")
     if ref:
       plt.legend(["Reference trajectory", "Actual trajectory"])
-    plt.show()
+    # plt.show()
 
     
     if collision_points != None:
