@@ -227,7 +227,7 @@ def get_minimal_bounding_sphere(pdf_list,nA,pix):
 def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, random_start=False, scalarize=False, Bounding_sphere=False):
 
     start_time = time.time()
-    pbm_file_complete = "./build_prob/random_maps/" + pbm_file
+    pbm_file_complete = "./build_prob/random_maps_sparse/" + pbm_file
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
     n_obj = len(problem.pdfs)
@@ -494,32 +494,32 @@ def find_traj(file,alloc,problem,start_pos,agent_types,agent_profile):
 
         # print("Appended the trajectory")
 
-        X,Y = np.meshgrid(*[np.linspace(0,1,num=100)]*2)
-        erg_calc = ergodic_metric_hetero.ErgCalc(pdf, n_agents, agent_type, problem.nA, 10, 100)
+        # X,Y = np.meshgrid(*[np.linspace(0,1,num=100)]*2)
+        # erg_calc = ergodic_metric_hetero.ErgCalc(pdf, n_agents, agent_type, problem.nA, 10, 100)
 
-        # print("Initialized erg_calc")
+        # # print("Initialized erg_calc")
 
-        fig = plt.figure(figsize=(5,5))
-        ax = plt.axes(xlim=(0, 1), ylim=(0, 1))
-        plt.contourf(X, Y, erg_calc.phik_recon, levels=np.linspace(np.min(erg_calc.phik_recon), np.max(erg_calc.phik_recon),100))
-        line, = ax.plot([], [], 'r.:', lw=3)
-        # print("Got the first info map contour on")
+        # fig = plt.figure(figsize=(5,5))
+        # ax = plt.axes(xlim=(0, 1), ylim=(0, 1))
+        # plt.contourf(X, Y, erg_calc.phik_recon, levels=np.linspace(np.min(erg_calc.phik_recon), np.max(erg_calc.phik_recon),100))
+        # line, = ax.plot([], [], 'r.:', lw=3)
+        # # print("Got the first info map contour on")
 
-        def animate(n):
-            # breakpoint()
-            traj_ck = erg_calc.get_ck(tj[:n])
-            X,Y = np.meshgrid(*[np.linspace(0,1,num=erg_calc.nPix)]*2)
-            _s = np.stack([X.ravel(), Y.ravel()]).T
-            # print("Going to get traj recon")
-            # breakpoint()
-            traj_recon = np.dot(traj_ck, vmap(erg_calc.fk_vmap, in_axes=(None, 0))(_s, erg_calc.k)).reshape(X.shape)
-            plt.contourf(X, Y, traj_recon, levels=np.linspace(np.min(traj_recon), np.max(traj_recon),100))
-            line.set_xdata(tj[:n, 0]*1)
-            line.set_ydata(tj[:n, 1]*1)
-            return line,
+        # def animate(n):
+        #     # breakpoint()
+        #     traj_ck = erg_calc.get_ck(tj[:n])
+        #     X,Y = np.meshgrid(*[np.linspace(0,1,num=erg_calc.nPix)]*2)
+        #     _s = np.stack([X.ravel(), Y.ravel()]).T
+        #     # print("Going to get traj recon")
+        #     # breakpoint()
+        #     traj_recon = np.dot(traj_ck, vmap(erg_calc.fk_vmap, in_axes=(None, 0))(_s, erg_calc.k)).reshape(X.shape)
+        #     plt.contourf(X, Y, traj_recon, levels=np.linspace(np.min(traj_recon), np.max(traj_recon),100))
+        #     line.set_xdata(tj[:n, 0]*1)
+        #     line.set_ydata(tj[:n, 1]*1)
+        #     return line,
 
-        anim = FuncAnimation(fig, animate, frames=tj.shape[0], interval=200)
-        anim.save(file+'_'+str(k)+'.gif')
+        # anim = FuncAnimation(fig, animate, frames=tj.shape[0], interval=200)
+        # anim.save(file+'_'+str(k)+'.gif')
     
     return trajectories
 
@@ -638,36 +638,36 @@ if __name__ == "__main__":
     start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
     agent_type = np.load("./Agent_types_4_agents.npy",allow_pickle=True)
 
-    for file in os.listdir("build_prob/random_maps/"):
-        pbm_file = "build_prob/random_maps/"+file
+    for file in os.listdir("build_prob/random_maps_sparse/"):
+        pbm_file = "build_prob/random_maps_sparse/"+file
 
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
         print("File: ", file)
 
-        if len(problem.pdfs) < n_agents: # or len(problem.pdfs) > 4:
+        if len(problem.pdfs) < n_agents or len(problem.pdfs) > 4:
             continue
 
-        if file != "random_map_52.pickle":
-            continue
+        # if file != "random_map_52.pickle":
+        #     continue
 
         # display_map_simple(problem,start_pos.item().get(file))
 
-        # final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,agent_type,random_start=False, scalarize=False, Bounding_sphere=False)
-        # print("file: ", file)
-        # print("Agent type: ", agent_type.item().get(file))
-        # print("Final allocation: ", final_allocation)
-        # print("Runtime: ", runtime)
-        # print("per pruned: ", per_leaf_prunes)
+        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,agent_type,random_start=False, scalarize=False, Bounding_sphere=False)
+        print("file: ", file)
+        print("Agent type: ", agent_type.item().get(file))
+        print("Final allocation: ", final_allocation)
+        print("Runtime: ", runtime)
+        print("per pruned: ", per_leaf_prunes)
 
-        final_allocation = {None: [], 0: (0,), 1: (1,), 2: (2,), 3: (3,)}
+        # final_allocation = {None: [], 0: (0,), 1: (1,), 2: (2,), 3: (3,)}
 
         # breakpoint()
 
-        # run_times[pbm_file] = runtime
-        # best_allocs[pbm_file] = final_allocation
-        # per_leaf_prunes_list[pbm_file] = per_leaf_prunes
-        # indv_erg_best[pbm_file] = indv_erg
+        run_times[pbm_file] = runtime
+        best_allocs[pbm_file] = final_allocation
+        per_leaf_prunes_list[pbm_file] = per_leaf_prunes
+        indv_erg_best[pbm_file] = indv_erg
 
         trajectories = find_traj(file,final_allocation,problem,start_pos,agent_type.item().get(file),agent_profile)
 
@@ -694,9 +694,9 @@ if __name__ == "__main__":
 
         # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
 
-        # np.save("BB_opt_random_maps_runtime_4_agents_sphere.npy", run_times)
-        # np.save("BB_opt_best_alloc_random_maps_4_agents_sphere.npy",best_allocs)
-        # np.save("BB_opt_per_leaf_pruned_random_maps_4_agents_sphere.npy",per_leaf_prunes_list)
-        # np.save("BB_opt_indv_erg_random_maps_4_agents_sphere.npy", indv_erg_best)
+        np.save("BB_opt_hetero_sparse_maps_runtime_4_agents.npy", run_times)
+        np.save("BB_opt_hetero_best_alloc_sparse_maps_4_agents.npy",best_allocs)
+        np.save("BB_opt_hetero_per_leaf_pruned_sparse_maps_4_agents.npy",per_leaf_prunes_list)
+        np.save("BB_opt_hetero_indv_erg_sparse_maps_4_agents.npy", indv_erg_best)
 
 

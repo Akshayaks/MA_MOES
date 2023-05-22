@@ -594,7 +594,7 @@ if __name__ == "__main__":
         print("\nFile: ", pbm_file)
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        if len(problem.pdfs) < n_agents+3 or len(problem.pdfs) > 10:
+        if len(problem.pdfs) < n_agents+1:
             continue
 
         final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=True)

@@ -137,7 +137,7 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     if title:
       fig.suptitle(title)
     if pbm_file:
-      plt.savefig("./hetero_"+pbm_file+".jpg")
+      plt.savefig("./hetero_sparse_"+pbm_file+".jpg")
     if ref:
       plt.legend(["Reference trajectory", "Actual trajectory"])
     # plt.show()
