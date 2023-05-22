@@ -8,7 +8,7 @@ import ergodic_metric
 
 import time
 from utils import *
-from explicit_allocation import *
+from explicit_allocation import scalarize_minmax
 from miniball import miniball
 
 np.random.seed(101)
@@ -204,18 +204,21 @@ def get_subsets(s):
 
 # Do we need to normalize the pdf_FC we get by using the center of the minimal bounding sphere?
 def get_minimal_bounding_sphere(pdf_list,nA,pix):
-    FC = []
+    # FC = []
+    # for pdf in pdf_list:
+    #     EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
+    #     FC.append(EC.phik*np.sqrt(EC.lamk))
+    pdfs = []
     for pdf in pdf_list:
-        EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
-        FC.append(EC.phik*np.sqrt(EC.lamk))
-    res = miniball(np.asarray(FC,dtype=np.double))
-    pdf_FC = res["center"]
-    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+        pdfs.append(pdf.flatten())
+    res = miniball(np.asarray(pdfs,dtype=np.double))
+    pdf_center = res["center"]
+    # pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
     minmax = res["radius"]
     # print(res['radius'])
     # breakpoint()
 
-    return pdf_FC, minmax
+    return pdf_center, minmax
 
 def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True, scalarize=False, Bounding_sphere=False):
 
@@ -256,17 +259,18 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
     nodes_pruned = 0
     nodes_explored = 0
 
-    pdf_FC = np.zeros((100,1))
+    # pdf_center = np.zeros((100,1))
     pdf = np.zeros((100,100))
 
     #Find the upper bound for the incumbent solution
     for k,v in incumbent.items():
         if len(v) > 1:
-            # if scalarize:
-            #     pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
+            if scalarize:
+                pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
             if Bounding_sphere:
                 print("Computing the center of the minimal bounding sphere")
-                pdf_FC, _ = get_minimal_bounding_sphere([pdf_list[a] for a in v],problem.nA,problem.pix)
+                pdf_center, radius = get_minimal_bounding_sphere([pdf_list[a] for a in v],problem.nA,problem.pix)
+                print("radius: ", radius)
                 # breakpoint()
             else:
                 print("Computing weighted average scalarized map")
@@ -283,7 +287,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
         # Just run ergodicity optimization for fixed iterations to get ergodic trajectory
         if Bounding_sphere:
             if len(v) > 1:
-                control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_FC)
+                control, erg, _ = ErgCover(pdf_center, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
                 print("Erg: ", erg[-1])
                 # breakpoint()
             else:
@@ -365,7 +369,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
                         if scalarize:
                             pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
                         elif Bounding_sphere:
-                            pdf_FC, _ = get_minimal_bounding_sphere([pdf_list[ai] for ai in a],problem.nA,problem.pix)
+                            pdf_center, _ = get_minimal_bounding_sphere([pdf_list[ai] for ai in a],problem.nA,problem.pix)
                         else:
                             pdf = np.zeros((100,100))
                             for j in a:
@@ -378,7 +382,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 
                     #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
                     if Bounding_sphere and len(a) > 1:
-                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_FC)
+                        control, erg, _ = ErgCover(pdf_center, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
                     else:
                         control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
@@ -590,10 +594,10 @@ if __name__ == "__main__":
         print("\nFile: ", pbm_file)
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        if len(problem.pdfs) < n_agents+1 or len(problem.pdfs) > 11:
+        if len(problem.pdfs) < n_agents+3 or len(problem.pdfs) > 10:
             continue
 
-        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False, scalarize=False, Bounding_sphere=True)
+        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=True)
         print("file: ", file)
         print("Final allocation: ", final_allocation)
         print("Runtime: ", runtime)
@@ -619,9 +623,9 @@ if __name__ == "__main__":
 
         # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
 
-        np.save("BB_opt_random_maps_runtime_4_agents_sphere.npy", run_times)
-        np.save("BB_opt_best_alloc_random_maps_4_agents_sphere.npy",best_allocs)
-        np.save("BB_opt_per_leaf_pruned_random_maps_4_agents_sphere.npy",per_leaf_prunes_list)
-        np.save("BB_opt_indv_erg_random_maps_4_agents_sphere.npy", indv_erg_best)
+        np.save("BB_opt_random_maps_runtime_4_agents_MBS.npy", run_times)
+        np.save("BB_opt_best_alloc_random_maps_4_agents_MBS.npy",best_allocs)
+        np.save("BB_opt_per_leaf_pruned_random_maps_4_agents_MBS.npy",per_leaf_prunes_list)
+        np.save("BB_opt_indv_erg_random_maps_4_agents_MBS.npy", indv_erg_best)
 
 

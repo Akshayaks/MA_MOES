@@ -12,6 +12,9 @@ from utils import *
 from explicit_allocation import scalarize_minmax
 from miniball import miniball
 import yaml
+from jax import vmap
+
+from matplotlib.animation import FuncAnimation
 
 np.random.seed(101)
 
@@ -485,7 +488,38 @@ def find_traj(file,alloc,problem,start_pos,agent_types,agent_profile):
         control, _, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], agent_types[k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
         speed = agent_profile["agent_type_speeds"][str(agent_types[k])]
-        trajectories.append(ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k],speed))
+        tj = ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k],speed)
+        tj = np.array(tj[1])
+        trajectories.append(tj)
+
+        # print("Appended the trajectory")
+
+        X,Y = np.meshgrid(*[np.linspace(0,1,num=100)]*2)
+        erg_calc = ergodic_metric_hetero.ErgCalc(pdf, n_agents, agent_type, problem.nA, 10, 100)
+
+        # print("Initialized erg_calc")
+
+        fig = plt.figure(figsize=(5,5))
+        ax = plt.axes(xlim=(0, 1), ylim=(0, 1))
+        plt.contourf(X, Y, erg_calc.phik_recon, levels=np.linspace(np.min(erg_calc.phik_recon), np.max(erg_calc.phik_recon),100))
+        line, = ax.plot([], [], 'r.:', lw=3)
+        # print("Got the first info map contour on")
+
+        def animate(n):
+            # breakpoint()
+            traj_ck = erg_calc.get_ck(tj[:n])
+            X,Y = np.meshgrid(*[np.linspace(0,1,num=erg_calc.nPix)]*2)
+            _s = np.stack([X.ravel(), Y.ravel()]).T
+            # print("Going to get traj recon")
+            # breakpoint()
+            traj_recon = np.dot(traj_ck, vmap(erg_calc.fk_vmap, in_axes=(None, 0))(_s, erg_calc.k)).reshape(X.shape)
+            plt.contourf(X, Y, traj_recon, levels=np.linspace(np.min(traj_recon), np.max(traj_recon),100))
+            line.set_xdata(tj[:n, 0]*1)
+            line.set_ydata(tj[:n, 1]*1)
+            return line,
+
+        anim = FuncAnimation(fig, animate, frames=tj.shape[0], interval=200)
+        anim.save(file+'_'+str(k)+'.gif')
     
     return trajectories
 
@@ -611,35 +645,47 @@ if __name__ == "__main__":
 
         print("File: ", file)
 
-        if len(problem.pdfs) < n_agents or len(problem.pdfs) > 4:
+        if len(problem.pdfs) < n_agents: # or len(problem.pdfs) > 4:
+            continue
+
+        if file != "random_map_52.pickle":
             continue
 
         # display_map_simple(problem,start_pos.item().get(file))
 
-        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,agent_type,random_start=False, scalarize=False, Bounding_sphere=False)
-        print("file: ", file)
-        print("Agent type: ", agent_type.item().get(file))
-        print("Final allocation: ", final_allocation)
-        print("Runtime: ", runtime)
-        print("per pruned: ", per_leaf_prunes)
+        # final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,agent_type,random_start=False, scalarize=False, Bounding_sphere=False)
+        # print("file: ", file)
+        # print("Agent type: ", agent_type.item().get(file))
+        # print("Final allocation: ", final_allocation)
+        # print("Runtime: ", runtime)
+        # print("per pruned: ", per_leaf_prunes)
+
+        final_allocation = {None: [], 0: (0,), 1: (1,), 2: (2,), 3: (3,)}
 
         # breakpoint()
 
-        run_times[pbm_file] = runtime
-        best_allocs[pbm_file] = final_allocation
-        per_leaf_prunes_list[pbm_file] = per_leaf_prunes
-        indv_erg_best[pbm_file] = indv_erg
+        # run_times[pbm_file] = runtime
+        # best_allocs[pbm_file] = final_allocation
+        # per_leaf_prunes_list[pbm_file] = per_leaf_prunes
+        # indv_erg_best[pbm_file] = indv_erg
 
         trajectories = find_traj(file,final_allocation,problem,start_pos,agent_type.item().get(file),agent_profile)
 
         # print("Trajectories: ", trajectories)
         tj = []
-        for i in range(len(trajectories)):
-            tj.append(trajectories[i][1])
+        for p in range(len(problem.pdfs)):
+            for a in range(n_agents):
+                if p in final_allocation[a]:
+                    tj.append(trajectories[a])
+                    break
 
-        display_map(problem,start_pos.item().get(file),final_allocation,tj=tj,title=str(agent_type.item().get(file))+file)
+        speeds = ""
+        for sp in agent_type.item().get(file):
+            speeds += str(agent_profile["agent_type_speeds"][str(sp)])
+            speeds += ", "
+        display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj,title= file + "    0:red, 1:blue, 2:green, 3:yellow\nspeeds: " + speeds + "\nAllocation: "+ str(final_allocation))
 
-        breakpoint()
+        # breakpoint()
         # break
 
         # feasible_trajectories = collision_check(trajectories,final_allocation,problem)
