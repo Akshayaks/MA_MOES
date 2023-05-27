@@ -204,21 +204,21 @@ def get_subsets(s):
 
 # Do we need to normalize the pdf_FC we get by using the center of the minimal bounding sphere?
 def get_minimal_bounding_sphere(pdf_list,nA,pix):
-    # FC = []
-    # for pdf in pdf_list:
-    #     EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
-    #     FC.append(EC.phik*np.sqrt(EC.lamk))
-    pdfs = []
+    FC = []
     for pdf in pdf_list:
-        pdfs.append(pdf.flatten())
-    res = miniball(np.asarray(pdfs,dtype=np.double))
-    pdf_center = res["center"]
-    # pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+        EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
+        FC.append(EC.phik*np.sqrt(EC.lamk))
+    # pdfs = []
+    # for pdf in pdf_list:
+    #     pdfs.append(pdf.flatten())
+    res = miniball(np.asarray(FC,dtype=np.double))
+    pdf_FC = res["center"]
+    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
     minmax = res["radius"]
     # print(res['radius'])
     # breakpoint()
 
-    return pdf_center, minmax
+    return pdf_FC, minmax
 
 def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True, scalarize=False, Bounding_sphere=False):
 
@@ -287,7 +287,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
         # Just run ergodicity optimization for fixed iterations to get ergodic trajectory
         if Bounding_sphere:
             if len(v) > 1:
-                control, erg, _ = ErgCover(pdf_center, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+                control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
                 print("Erg: ", erg[-1])
                 # breakpoint()
             else:
@@ -382,7 +382,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=True,
 
                     #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
                     if Bounding_sphere and len(a) > 1:
-                        control, erg, _ = ErgCover(pdf_center, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
                     else:
                         control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
@@ -597,11 +597,16 @@ if __name__ == "__main__":
         if len(problem.pdfs) < n_agents+1:
             continue
 
+        # if file != "random_map_97.pickle":
+        #     continue
+
         final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=True)
         print("file: ", file)
         print("Final allocation: ", final_allocation)
         print("Runtime: ", runtime)
         print("per pruned: ", per_leaf_prunes)
+        print("indv_erg: ", indv_erg)
+        print("minmax metric: ", max(indv_erg))
         # breakpoint()
 
         run_times[pbm_file] = runtime
@@ -623,9 +628,9 @@ if __name__ == "__main__":
 
         # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
 
-        np.save("BB_opt_random_maps_runtime_4_agents_MBS.npy", run_times)
-        np.save("BB_opt_best_alloc_random_maps_4_agents_MBS.npy",best_allocs)
-        np.save("BB_opt_per_leaf_pruned_random_maps_4_agents_MBS.npy",per_leaf_prunes_list)
-        np.save("BB_opt_indv_erg_random_maps_4_agents_MBS.npy", indv_erg_best)
+        np.save("BB_opt_random_maps_runtime_4_agents_MBS_FC_wt.npy", run_times)
+        np.save("BB_opt_best_alloc_random_maps_4_agents_MBS_FC_wt.npy",best_allocs)
+        np.save("BB_opt_per_leaf_pruned_random_maps_4_agents_MBS_FC_wt.npy",per_leaf_prunes_list)
+        np.save("BB_opt_indv_erg_random_maps_4_agents_MBS_FC_wt.npy", indv_erg_best)
 
 

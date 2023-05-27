@@ -124,11 +124,46 @@ class ErgCalc(object):
 		_s = jnp.stack([X.ravel(), Y.ravel()]).T
 		return jnp.dot(FC, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
 
-	def get_ck(self, tr):
+	def get_ck(self, tr, debug = False):
 		"""
 		given a trajectory tr, compute fourier coeffient of its spatial statistics.
 		k is the number of fourier coeffs.
 		"""
+		# print("Selected footprint: ", fp)
+		# print("\nType of tr: ", type(tr))
+		# if tr:
+		# 	print("Traj exists")
+
+		## When it is initializing the jit for loss function in that call the tr values are nonsense and it cannot
+		## access each element to do the footprint process. Need a way to identify that tr is infact random data.
+		## Because even when it had data it was the JAX tracer type
+		if type(tr) is tuple:
+			tr_footprint = [tr[0],[]]
+			fp = agent_profile["agent_type_footprints"][str(self.agent_type)]
+			# print("len(tr): ", len(tr[1]))
+			for t in tr[1]:
+				# print("t: ", t)
+				# print(t[0] - fp,t[0] + fp)
+				# breakpoint()
+				# print(np.arange(t[0]-fp,t[0]+fp))
+				# print(np.arange(t[1]-fp,t[1]+fp))
+				# breakpoint()
+				for i in np.arange(t[0]-fp,t[0]+fp):
+					# print("i: ", i)
+					# breakpoint()
+					for j in np.arange(t[1]-fp,t[1]+fp):
+						# print("i: ", i)
+						# print("j: ", j)
+						# breakpoint()
+						# if i < 0 or i >= 1 or j < 0 or j >= 1:
+						# 	continue
+						tr_footprint[1].append([i,j])
+			tr_footprint = tuple(tr_footprint)
+			breakpoint()
+			tr = tr_footprint
+			print("Got tr footprint")
+			breakpoint()
+
 		ck = jnp.mean(vmap(partial(self.fk_vmap, tr))(self.k), axis=1)
 		ck = ck / self.hk
 		return ck
@@ -146,11 +181,13 @@ class ErgCalc(object):
 
 		for i in range(self.n_agents):
 			max_speed = agent_profile["agent_type_speeds"][str(self.agent_type)]
+			footprint = agent_profile["agent_type_footprints"][str(self.agent_type)]
 			# print("Max speed: ", max_speed)
 			u_i = u[i*self.nA:(i+1)*self.nA]
 			x0_i = x0[i*3:i*3+3]
 			xf, tr = GetTrajXY(u_i, x0_i,max_speed)
 			trajectories.append(tr)
+			# breakpoint()
 			ck_i = self.get_ck(tr)
 			ck += ck_i
 		ck = ck / (self.n_agents)

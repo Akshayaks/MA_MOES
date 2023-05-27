@@ -3,12 +3,14 @@ import os
 
 
 if __name__ == "__main__":
-    sphere_indv_erg = np.load("./BB_opt_indv_erg_random_maps_4_agents_MBS.npy",allow_pickle=True)
+    sphere_indv_erg = np.load("./BB_opt_indv_erg_random_maps_4_agents_MBS_FC.npy",allow_pickle=True)
     sphere_indv_erg = sphere_indv_erg.ravel()[0]
 
     avg_indv_erg = np.load("./results_canebrake/BB_opt_indv_erg_4_agents.npy",allow_pickle=True)
     avg_indv_erg = avg_indv_erg.ravel()[0]
-    # breakpoint()
+
+    print(len(sphere_indv_erg),len(avg_indv_erg))
+    breakpoint()
 
     for file in os.listdir("./build_prob/random_maps/"):
         if file not in avg_indv_erg.keys():

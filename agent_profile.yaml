@@ -6,10 +6,10 @@
     '2': 10
   },
 
-  'agent_sensor_footprints':
+  'agent_type_footprints':
   {
-    '0': 1,
-    '1': 3,
+    '0': 5,
+    '1': 1,
     '2': 6
   }
 }

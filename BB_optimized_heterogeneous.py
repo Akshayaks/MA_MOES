@@ -299,6 +299,10 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
         for p in v:
             pdf_indv = np.asarray(pdf_list[p].flatten())
             EC = ergodic_metric_hetero.ErgCalc(pdf_indv,1,agent_types[k],problem.nA,n_scalar,problem.pix)
+            traj = ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k],2)
+            ck_gotten = EC.get_ck(traj,True)
+            print("Got ck: ", ck_gotten)
+            breakpoint()
             incumbent_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
 
     upper = max(incumbent_erg)
@@ -306,7 +310,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
     print("Incumber Ergodicities: ", incumbent_erg)
     print("Initial Upper: ", upper)
     # return {},0,0,0
-    # breakpoint()
+    breakpoint()
 
     #Start the tree with the root node being [], blank assignment
     root = Node(None, [], [], np.inf, np.inf, [], None)
@@ -489,6 +493,7 @@ def find_traj(file,alloc,problem,start_pos,agent_types,agent_profile):
 
         speed = agent_profile["agent_type_speeds"][str(agent_types[k])]
         tj = ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k],speed)
+
         tj = np.array(tj[1])
         trajectories.append(tj)
 
