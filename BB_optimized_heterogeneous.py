@@ -117,14 +117,16 @@ def greedy_alloc(problem, n_agents, agent_types, node = None, sensor_footprint =
         if i in maps_allotted:
             continue
         k = 0
-        print("i: ", i)
+        # print("i: ", i)
 
         # Sort the amount of information on a map for different agents in descending order
 
         map_scores = [a[i] for a in agent_scores]
-        info = sorted(map_scores, reverse=True) 
+        info = sorted(map_scores, reverse=True)
+        # print(info) 
         found = False
         while not found:
+            # print("k: ", k)
             idx = map_scores.index(info[k]) # Free agent with max info on this map
             if (agents_assigned[idx] > 0 and np.count_nonzero(agents_assigned == 0) == n_obj - sum(agents_assigned)) or idx in agents_allotted:
                 k += 1
@@ -227,7 +229,7 @@ def get_minimal_bounding_sphere(pdf_list,nA,pix):
 def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, random_start=False, scalarize=False, Bounding_sphere=False):
 
     start_time = time.time()
-    pbm_file_complete = "./build_prob/random_maps_sparse/" + pbm_file
+    pbm_file_complete = "./build_prob/random_maps/" + pbm_file
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
     n_obj = len(problem.pdfs)
@@ -252,6 +254,15 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
     else:
         problem.s0 = start_pos.item().get(pbm_file)
     
+    #Same start position test
+    s = []
+    for i in range(n_agents):
+        s.append(0.5)
+        s.append(0.5)
+        s.append(0)
+
+    problem.s0 = np.array(s)       
+    
     agent_types = agent_categories.item().get(pbm_file)
     # print("Agent categories: ", agent_categories)
     # print("Agent types: ", agent_types)
@@ -262,7 +273,8 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
     print("Agent start positions allotted and agent type identified!")
 
     #Generate incumbent solution using Greedy approach
-    incumbent = greedy_alloc(problem,n_agents,agent_types)
+    # incumbent = greedy_alloc(problem,n_agents,agent_types)
+    incumbent = {0:[0],1:[1],2:[2],3:[3]}
     incumbent_erg = np.zeros(n_obj)
 
     nodes_pruned = 0
@@ -299,10 +311,10 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
         for p in v:
             pdf_indv = np.asarray(pdf_list[p].flatten())
             EC = ergodic_metric_hetero.ErgCalc(pdf_indv,1,agent_types[k],problem.nA,n_scalar,problem.pix)
-            traj = ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k],2)
-            ck_gotten = EC.get_ck(traj,True)
-            print("Got ck: ", ck_gotten)
-            breakpoint()
+            # traj = ergodic_metric_hetero.GetTrajXY(control,problem.s0[3*k:3+3*k],2)
+            # ck_gotten = EC.get_ck(traj,True)
+            # print("Got ck: ", ck_gotten)
+            # breakpoint()
             incumbent_erg[p] = EC.fourier_ergodic_loss(control,problem.s0[3*k:3+3*k])
 
     upper = max(incumbent_erg)
@@ -310,7 +322,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
     print("Incumber Ergodicities: ", incumbent_erg)
     print("Initial Upper: ", upper)
     # return {},0,0,0
-    breakpoint()
+    # breakpoint()
 
     #Start the tree with the root node being [], blank assignment
     root = Node(None, [], [], np.inf, np.inf, [], None)
@@ -468,6 +480,8 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, agent_categories, 
 def find_traj(file,alloc,problem,start_pos,agent_types,agent_profile):
     trajectories = []
     problem.s0 = start_pos.item().get(file)
+
+    problem.s0 = np.array([0.5,0.5,0,0.5,0.5,0,0.5,0.5,0,0.5,0.5,0])
 
     pdf_list = problem.pdfs
 
@@ -643,18 +657,18 @@ if __name__ == "__main__":
     start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
     agent_type = np.load("./Agent_types_4_agents.npy",allow_pickle=True)
 
-    for file in os.listdir("build_prob/random_maps_sparse/"):
-        pbm_file = "build_prob/random_maps_sparse/"+file
+    for file in os.listdir("build_prob/random_maps/"):
+        pbm_file = "build_prob/random_maps/"+file
 
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
         print("File: ", file)
 
-        if len(problem.pdfs) < n_agents or len(problem.pdfs) > 4:
-            continue
-
-        # if file != "random_map_52.pickle":
+        # if len(problem.pdfs) < n_agents or len(problem.pdfs) > 4:
         #     continue
+
+        if file != "random_map_98.pickle" and file != "random_map_70.pickle":
+            continue
 
         # display_map_simple(problem,start_pos.item().get(file))
 
@@ -688,7 +702,10 @@ if __name__ == "__main__":
         for sp in agent_type.item().get(file):
             speeds += str(agent_profile["agent_type_speeds"][str(sp)])
             speeds += ", "
-        display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj,title= file + "    0:red, 1:blue, 2:green, 3:yellow\nspeeds: " + speeds + "\nAllocation: "+ str(final_allocation))
+        
+        s = np.array([0.5,0.5,0,0.5,0.5,0,0.5,0.5,0,0.5,0.5,0])
+        display_map(problem,s,final_allocation,pbm_file=file,tj=tj,title= file + "    0:red, 1:blue, 2:green, 3:yellow\nspeeds: " + speeds + "\nAllocation: "+ str(final_allocation))
+        # display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj,title= file + "    0:red, 1:blue, 2:green, 3:yellow\nspeeds: " + speeds + "\nAllocation: "+ str(final_allocation))
 
         # breakpoint()
         # break
@@ -699,9 +716,9 @@ if __name__ == "__main__":
 
         # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
 
-        np.save("BB_opt_hetero_sparse_maps_runtime_4_agents.npy", run_times)
-        np.save("BB_opt_hetero_best_alloc_sparse_maps_4_agents.npy",best_allocs)
-        np.save("BB_opt_hetero_per_leaf_pruned_sparse_maps_4_agents.npy",per_leaf_prunes_list)
-        np.save("BB_opt_hetero_indv_erg_sparse_maps_4_agents.npy", indv_erg_best)
+        # np.save("BB_opt_hetero_sparse_maps_runtime_4_agents.npy", run_times)
+        # np.save("BB_opt_hetero_best_alloc_sparse_maps_4_agents.npy",best_allocs)
+        # np.save("BB_opt_hetero_per_leaf_pruned_sparse_maps_4_agents.npy",per_leaf_prunes_list)
+        # np.save("BB_opt_hetero_indv_erg_sparse_maps_4_agents.npy", indv_erg_best)
 
 

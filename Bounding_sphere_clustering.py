@@ -1,14 +1,10 @@
-# import matplotlib.pyplot as plt
 import numpy as np
-
 import common
-# from ergodic_coverage import ErgCover
 import ergodic_metric
 from miniball import miniball
-
 import time
 from utils import *
-from explicit_allocation import *
+from explicit_allocation import scalarize_minmax
 
 np.random.seed(101)
 
@@ -40,7 +36,13 @@ def get_minimal_bounding_sphere(pdf_list,nA,pix):
         FC.append(EC.phik*np.sqrt(EC.lamk))
     res = miniball(np.asarray(FC,dtype=np.double))
     pdf_FC = res["center"]
-    # pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+    # dists = []
+    # for f in FC:
+    #     dists.append(np.linalg.norm(f - pdf_FC))
+    # print("Number of maps: ", len(pdf_list))
+    # print("Maximum distance and radius: ", max(dists),res["radius"])
+    # breakpoint()
+    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
     minmax = res["radius"]
     # print(res['radius'])
     # breakpoint()
@@ -275,14 +277,14 @@ if __name__ == "__main__":
     per_leaf_prunes = {}
     indv_erg_best = {}
 
-    best_alloc_bb = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
-    best_alloc_bb = best_alloc_bb.ravel()[0]
+    # best_alloc_bb = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
+    # best_alloc_bb = best_alloc_bb.ravel()[0]
 
-    best_alloc_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
-    best_alloc_sim = best_alloc_sim.ravel()[0]
+    # best_alloc_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
+    # best_alloc_sim = best_alloc_sim.ravel()[0]
 
-    alloc_clustering = np.load("./Best_clustering_minimal_bounding_sphere_more_than_7.npy",allow_pickle=True)
-    alloc_clustering = alloc_clustering.ravel()[0]
+    # alloc_clustering = np.load("./Best_clustering_minimal_bounding_sphere_more_than_7.npy",allow_pickle=True)
+    # alloc_clustering = alloc_clustering.ravel()[0]
 
     best_clustering = {}
     runtimes = {}
@@ -314,7 +316,7 @@ if __name__ == "__main__":
         # best_clustering[file] = clusters
 
         # np.save("Best_clustering_minimal_bounding_sphere_more_than_7.npy",best_clustering)
-        np.save("Runtime_minimal_bounding_sphere_4_agents.npy",runtimes)
+        # np.save("Runtime_minimal_bounding_sphere_4_agents.npy",runtimes)
     # print("Total number of tests: ", count)
 
 

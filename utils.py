@@ -1,6 +1,6 @@
 from matplotlib.patches import Rectangle, Circle
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+# import matplotlib.animation as animation
 import numpy as np
 from more_itertools import set_partitions
 import itertools
@@ -87,6 +87,8 @@ def display_map_simple(pbm,start_pos,pbm_file=None,tj=None,title=None):
         l += 1
         if l == n_obj:
           break
+      if l == n_obj:
+        break
     if title:
       fig.suptitle(title)
     if pbm_file:
@@ -104,12 +106,12 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     n_col = math.ceil(n_obj/2)
     if n_col == 1:
       n_col += 1
-    n_agents = int(len(start_pos)/3)
+    n_agents = int(len(start_pos)/2)
 
     fig, axs = plt.subplots(2, n_col,figsize=(8,10))
     l = 0
     colors = ["red", "blue", "green", "yellow"] #Colors for each agent
-    print("alloc: ", alloc)
+    # print("alloc: ", alloc)
     # breakpoint()
 
     for i in range(2):
@@ -125,6 +127,7 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
           if l in alloc[k]:
             axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
             if tj != None:
+              # print("traj")
               axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color=colors[k],linewidth=2)
             if ref != None:
               axs[i,j].plot(ref[l][:,0]*100,ref[l][:,1]*100,'g--',linewidth=2,)
@@ -137,10 +140,10 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     if title:
       fig.suptitle(title)
     if pbm_file:
-      plt.savefig("./hetero_sparse_"+pbm_file+".jpg")
+      plt.savefig("./same_start_hetero_sparse_"+pbm_file+".jpg")
     if ref:
       plt.legend(["Reference trajectory", "Actual trajectory"])
-    # plt.show()
+    plt.show()
 
     
     if collision_points != None:

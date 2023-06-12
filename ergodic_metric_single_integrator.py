@@ -3,46 +3,18 @@ from jax import vmap, jit, grad
 import jax.numpy as jnp
 from jax.lax import scan
 from functools import partial
-import yaml
 
-# rob_vel = 0.8
-# def fDyn(x, u): # dynamics of the robot - point mass
-# 	xnew = x + jnp.array([jnp.tanh(u[0]),jnp.tanh(u[0]),10*u[1]])
-# 	# xnew = x + jnp.array([0.8,0.8,10*u[1]])
-# 	return xnew, x
-
-with open("agent_profile.yaml", "r") as yamlfile:
-    agent_profile = yaml.load(yamlfile, Loader=yaml.FullLoader)
-
-def fDiffDrive0(x0, u, max_speed = 0.25):
-	"""
-	x0 = (x,y,theta)
-	u = (v,w)
-	"""
-	# print("Speed limit: ", max_speed)
-	u = max_speed * jnp.tanh(u) #Limit the maximum velocity
-	x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), 10*u[1]])
-	return x, x0
-
-def fDiffDrive1(x0, u, max_speed = 1):
-	"""
-	x0 = (x,y,theta)
-	u = (v,w)
-	"""
-	print("Speed limit: ", max_speed)
-	u = max_speed * jnp.tanh(u) #Limit the maximum velocity
-	x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), 10*u[1]])
-	return x, x0
-
-def fDiffDrive2(x0, u, max_speed = 10):
-	"""
-	x0 = (x,y,theta)
-	u = (v,w)
-	"""
-	print("Speed limit: ", max_speed)
-	u = max_speed * jnp.tanh(u) #Limit the maximum velocity
-	x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), 10*u[1]])
-	return x, x0
+rob_vel = 0.8
+def fDyn(x, u):
+    # x: (x,y)
+    # u: (vx,vy)
+    # u = jnp.where(u > 0.5, 1, u)
+    # u = jnp.where(u > 0.01, 1, u)
+    # u = jnp.where(u < 0.01, 0, u)
+    # u = jnp.where(u < -0.1, -1, u)
+    # u = jnp.where(u > -0.1  u < 0.1, 0, u)
+    xnew = x + jnp.array([u[0],u[1]])
+    return xnew, x
 
 def get_hk(k): # normalizing factor for basis function
 	_hk = jnp.array((2. * k + np.sin(2 * k))/(4. * k))
@@ -52,36 +24,22 @@ def get_hk(k): # normalizing factor for basis function
 def fk(x, k): # basis function
     return jnp.prod(jnp.cos(x*k))
 
-def GetTrajXY(u, x0, max_speed):
+def GetTrajXY(u, x0):
     """
     """
-    # fdynamics = lambda x,u: fDiffDrive(x, u, max_speed)
-    # xf, tr0 = scan(fdynamics, x0, u)
-    if max_speed == 0.25:
-        xf, tr0 = scan(fDiffDrive0, x0, u)
-    elif max_speed == 1:
-        xf, tr0 = scan(fDiffDrive1, x0, u)
-    else: 
-        xf, tr0 = scan(fDiffDrive2, x0, u)
-    tr = tr0[:,0:2] # take the (x,y) part of all points
+    xf, tr = scan(fDyn, x0, u)
     return xf, tr
-
-def GetTrajXYTheta(u,x0):
-	xf, tr = scan(fDiffDrive0, x0, u)
-	return xf, tr
 
 
 class ErgCalc(object):
 	"""
 	modified from Ian's Ergodic Coverage code base.
 	"""
-	def __init__(self, pdf, n_agents, agent_type, nA, n_fourier, nPix):
+	def __init__(self, pdf, n_agents, nA, n_fourier, nPix):
 		# print("Number of agents: ", n_agents)
 		self.n_agents = n_agents
-		# print("Agent types: ", agent_type)
 		self.nPix = nPix
 		self.nA = nA
-		self.agent_type = agent_type
 		# aux func
 		self.fk_vmap = lambda _x, _k: vmap(fk, in_axes=(0,None))(_x, _k)
 
@@ -124,46 +82,11 @@ class ErgCalc(object):
 		_s = jnp.stack([X.ravel(), Y.ravel()]).T
 		return jnp.dot(FC, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
 
-	def get_ck(self, tr, debug = False):
+	def get_ck(self, tr):
 		"""
 		given a trajectory tr, compute fourier coeffient of its spatial statistics.
 		k is the number of fourier coeffs.
 		"""
-		# print("Selected footprint: ", fp)
-		# print("\nType of tr: ", type(tr))
-		# if tr:
-		# 	print("Traj exists")
-
-		## When it is initializing the jit for loss function in that call the tr values are nonsense and it cannot
-		## access each element to do the footprint process. Need a way to identify that tr is infact random data.
-		## Because even when it had data it was the JAX tracer type
-		if type(tr) is tuple:
-			tr_footprint = [tr[0],[]]
-			fp = agent_profile["agent_type_footprints"][str(self.agent_type)]
-		# 	# print("len(tr): ", len(tr[1]))
-			for t in tr[1]:
-		# 		# print("t: ", t)
-		# 		# print(t[0] - fp,t[0] + fp)
-		# 		# breakpoint()
-		# 		# print(np.arange(t[0]-fp,t[0]+fp))
-		# 		# print(np.arange(t[1]-fp,t[1]+fp))
-		# 		# breakpoint()
-				for i in np.arange(t[0]-fp,t[0]+fp):
-		# 			# print("i: ", i)
-		# 			# breakpoint()
-					for j in np.arange(t[1]-fp,t[1]+fp):
-		# 				# print("i: ", i)
-		# 				# print("j: ", j)
-		# 				# breakpoint()
-		# 				# if i < 0 or i >= 1 or j < 0 or j >= 1:
-		# 				# 	continue
-						tr_footprint[1].append([i,j])
-		# 	tr_footprint = tuple(tr_footprint)
-		# 	breakpoint()
-			tr = tr_footprint
-		# 	print("Got tr footprint")
-		# 	breakpoint()
-
 		ck = jnp.mean(vmap(partial(self.fk_vmap, tr))(self.k), axis=1)
 		ck = ck / self.hk
 		return ck
@@ -180,14 +103,10 @@ class ErgCalc(object):
 			print("Current u values: ", u.shape)
 
 		for i in range(self.n_agents):
-			max_speed = agent_profile["agent_type_speeds"][str(self.agent_type)]
-			# footprint = agent_profile["agent_type_footprints"][str(self.agent_type)]
-			# print("Max speed: ", max_speed)
 			u_i = u[i*self.nA:(i+1)*self.nA]
-			x0_i = x0[i*3:i*3+3]
-			xf, tr = GetTrajXY(u_i, x0_i,max_speed)
+			x0_i = x0[i*2:i*2+2]
+			xf, tr = GetTrajXY(u_i, x0_i)
 			trajectories.append(tr)
-			# breakpoint()
 			ck_i = self.get_ck(tr)
 			ck += ck_i
 		ck = ck / (self.n_agents)

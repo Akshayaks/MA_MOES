@@ -1,6 +1,10 @@
 import numpy as np
 import os
 
+"""
+This code is used to compare the mimmax metric of allocations given by branch and bound with weighted average scalarization and minimum bounding sphere scalarization.
+"""
+
 
 if __name__ == "__main__":
     sphere_indv_erg = np.load("./BB_opt_indv_erg_random_maps_4_agents_MBS_FC.npy",allow_pickle=True)

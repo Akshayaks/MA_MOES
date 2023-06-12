@@ -1,8 +1,8 @@
-
 import numpy as np
 from jax import vmap, jit, grad
 import jax.numpy as jnp
 from jax.lax import scan
+from jax.config import config; config.update("jax_enable_x64", True)
 from functools import partial
 
 rob_vel = 0.8

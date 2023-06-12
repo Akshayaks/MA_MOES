@@ -1,36 +1,34 @@
 import numpy as onp
 import jax.numpy as np
 from jax.experimental import optimizers
-from jax.config import config; config.update("jax_enable_x64", True)
 
 import matplotlib.pyplot as plt
-import ergodic_metric
+import ergodic_metric_single_integrator as EM
+import pdb
 
 GLOBAL_NUM_K = 0
 
-def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=None, stop_eps=-1, kkk=0,grad_criterion=False,direct_FC=None):
+def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=None, stop_eps=-1, kkk=0,grad_criterion=False,pdf1=None,pdf2=None,direct_FC=None):
 	"""
 	run ergodic coverage over a info map. Modified from Ian's code.
 	return a list of control inputs.
 	"""
-	# print("****************************************************************")
-	# print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
+	print("****************************************************************")
+	print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
 	
 	
-	if direct_FC is not None:
-		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
-		erg_calc.phik = direct_FC
-	else:
-		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
+	
+	erg_calc = EM.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 
 	opt_init, opt_update, get_params = optimizers.adam(1e-3) #Declaring Adam's optimizer
 
 	# initial conditions
 	x0 = np.array(s0)
 	
-	# print("Initial state of the agents: ", x0)
+	print("Initial state of the agents: ", x0)
 	
-	u = np.zeros((nA*n_agents,2))
+	u = np.zeros((nA*n_agents,2))#vx and vy
+	# print ("Initial controls: ", u)
 	if u_init is not None:
 		u = np.array(u_init)
 	opt_state = opt_init(u)
@@ -41,7 +39,7 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 
 	if grad_criterion == True: # We want to iterate till we find a minima 
 		nIter = int(1000) # Again set a very large number of iterations
-		# print("**Grad criterion activated!**")
+		print("**Grad criterion activated!**")
 
 	i = 0
 	for i in range(nIter):
@@ -50,23 +48,28 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 
 		opt_state = opt_update(i, g, opt_state)
 		u = get_params(opt_state)
+		# print("Control input: ", u)
+		# breakpoint()
+		
 		log.append(erg_calc.fourier_ergodic_loss(u, x0).copy())
+		# print("Erg: ", log[-1])
 
 		## check for convergence
 		if grad_criterion: # at least 10 iterationss
 			if -0.01 < np.linalg.norm(g) < 0.01:
-				# print("Reached grad criterion at iteration: ", i)
+				print("Reached grad criterion at iteration: ", i)
+				# pdb.set_trace()
 				break
 
-		elif i > 10 and stop_eps > 0: # at least 10 iterationss
+		if i > 10 and stop_eps > 0: # at least 10 iterationss
 			if onp.abs(log[-1]) < stop_eps:
-				# print("Reached final threshold before number of iterations!")
+				print("Reached final threshold before number of iterations!")
 				break
 		 
 
 	if ifDisplay : # final traj
 		plt.figure(figsize=(5,5))
-		xf, tr = ergodic_metric.GetTrajXY(u, x0)
+		xf, tr = EM.GetTrajXY(u, x0)
 		X,Y = np.meshgrid(*[np.linspace(0,1,num=nPix)]*2)
 		plt.contourf(X, Y, erg_calc.phik_recon, levels=np.linspace(np.min(erg_calc.phik_recon), np.max(erg_calc.phik_recon),100), cmap='gray')
 		# plt.scatter(tr[:,0],tr[:,1], c='r', marker="*:")

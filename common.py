@@ -7,9 +7,6 @@ import pymoo.model.problem as pmo_p
 import ergodic_metric
 from distributions import gaussianMixtureDistribution
 
-import matplotlib.pyplot as plt
-import jax.numpy as jnp
-
 
 def SavePickle(obj, file_path):
     """
