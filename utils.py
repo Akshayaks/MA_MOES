@@ -111,8 +111,6 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     fig, axs = plt.subplots(2, n_col,figsize=(8,10))
     l = 0
     colors = ["red", "blue", "green", "yellow"] #Colors for each agent
-    # print("alloc: ", alloc)
-    # breakpoint()
 
     for i in range(2):
       for j in range(n_col):
@@ -123,11 +121,9 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
         #   axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
 
         for k in range(n_agents):
-          # print(k,alloc[k])
           if l in alloc[k]:
             axs[i,j].plot(pbm.s0[k*3]*100,pbm.s0[k*3+1]*100, marker="o", markersize=5, markerfacecolor=colors[k], markeredgecolor=colors[k])
             if tj != None:
-              # print("traj")
               axs[i,j].plot(tj[l][:,0]*100,tj[l][:,1]*100,color=colors[k],linewidth=2)
             if ref != None:
               axs[i,j].plot(ref[l][:,0]*100,ref[l][:,1]*100,'g--',linewidth=2,)
@@ -140,21 +136,11 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     if title:
       fig.suptitle(title)
     if pbm_file:
-      plt.savefig("./same_start_hetero_sparse_"+pbm_file+".jpg")
+      plt.savefig("./Final_exp/traj_random_maps_BB_MBS_scal/"+pbm_file+".jpg")
     if ref:
       plt.legend(["Reference trajectory", "Actual trajectory"])
-    plt.show()
+    # plt.show()
 
-    
-    if collision_points != None:
-      for c in range(len(collision_points)):
-        print(collision_points[c])
-        for k in range(n_agents):
-          plt.plot(tj[k][:collision_points[c][0],0]*100,tj[k][:collision_points[c][0],1]*100,color=colors[k],linewidth=2)
-        c_x = [collision_points[c][1]*100]
-        c_y = [collision_points[c][2]*100]
-        plt.scatter(c_x,c_y,marker='X',linewidths=1.5)
-        plt.show()
     return
 
 '''

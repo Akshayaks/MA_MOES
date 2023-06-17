@@ -59,7 +59,6 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
     #Allocate based on information in a window centered around the agent
 
     n_obj = len(problem.pdfs)
-    # print("Len objec: ", n_obj)
     agents_allotted = []
     maps_allotted = []
     if node:
@@ -83,7 +82,6 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
     agent_scores = np.zeros((n_agents,n_obj))
 
     # Calculate how much information agent i gets when allotted map p
-
     for i in range(n_agents):
         if i in agents_allotted:
             continue
@@ -102,16 +100,13 @@ def greedy_alloc(problem, n_agents,node = None, sensor_footprint = 15):
     allocation = {new_list: [] for new_list in range(n_agents)}
 
     agents_assigned = np.zeros(n_agents)
-    # print("agent scores: ", agent_scores)
 
     for i in range(n_obj):
         if i in maps_allotted:
             continue
         k = 0
-        # print("i: ", i)
 
         # Sort the amount of information on a map for different agents in descending order
-
         map_scores = [a[i] for a in agent_scores]
         info = sorted(map_scores, reverse=True) 
         found = False
@@ -196,8 +191,8 @@ def find_best_allocation(root,values,alloc,indv_erg):
 
 def get_subsets(s):
     subsets = []
-    if len(s) == 1:
-        return np.array(s)
+    # if len(s) == 1:
+    #     return np.array(s)
     for i in range(1,len(s)):
         subsets = subsets + list(itertools.combinations(s, i))
     return subsets
@@ -240,16 +235,12 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
 
     pdf_list = problem.pdfs
 
-    # print("Agent start positions allotted!")
-
     #Generate incumbent solution using Greedy approach
     incumbent = greedy_alloc(problem,n_agents)
     incumbent_erg = np.zeros(n_obj)
 
     nodes_pruned = 0
     nodes_explored = 0
-
-    # pdf_center = np.zeros((100,1))
     pdf = np.zeros((100,100))
 
     #Find the upper bound for the incumbent solution
@@ -258,17 +249,12 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
             if scalarize:
                 pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
             if Bounding_sphere:
-                # print("Computing the center of the minimal bounding sphere")
                 pdf_center, _ = get_minimal_bounding_sphere([pdf_list[a] for a in v],problem.nA,problem.pix)
-                # print("radius: ", radius)
-                # breakpoint()
             else:
-                # print("Computing weighted average scalarized map")
                 pdf = np.zeros((100,100))
                 for a in v:
                     pdf += (1/len(v))*pdf_list[a]
         else:
-            # print("Single information map")
             pdf = pdf_list[v[0]]
 
         # if not Bounding_sphere:
@@ -279,9 +265,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
            control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
         else: 
             control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
-            # print("Erg: ", erg[-1])
-            # breakpoint()
-        
+
         # Calculate individual ergodicities using the gotten trajectory
         for p in v:
             pdf_indv = np.asarray(pdf_list[p].flatten())
@@ -292,44 +276,32 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
     print("Incumbent allocation: ", incumbent)
     print("Incumber Ergodicities: ", incumbent_erg)
     print("Initial Upper: ", upper)
-    # return {},0,0,0
-    # breakpoint()
 
     #Start the tree with the root node being [], blank assignment
     root = Node(None, [], [], np.inf, np.inf, [], None)
-    # print("Added root node")
 
     # Nodes that are alive or not pruned
     explore_node = [root]
+    single_map_agent = np.zeros((n_agents,n_obj))
     # single_map_agent = np.zeros((n_agents,n_obj))
     agent_alloc_pruned = [[] for _ in range(n_agents)]
 
     for i in range(n_agents):
-        # print("Looking at assignments for agent: ", i)
         agent_map_erg = {}
-        
         new_explore_node = []
         for curr_node in explore_node:
             alloc_comb = generate_alloc_nodes(curr_node,n_obj,n_agents)
-            # print("Alloc_comb: ", alloc_comb)
 
             for a in alloc_comb:
-                # print("Looking at next possible assignment for agent: ", i)
-                
-                node = Node(i, a, [], np.inf, np.inf, [], curr_node)
-                # print("Alloc assigned: ", a)
-                
+                node = Node(i, a, [], np.inf, np.inf, [], curr_node)                
                 prune = False
                 bad_alloc = False
 
                 if a not in agent_map_erg.keys():
                     subsets = get_subsets(list(a))
-                    # print("Alloc considered: ", a)
-                    # print("\nSubsets of alloc: ", subsets)
-                    # breakpoint()
+
                     for s in subsets:
                         if s in agent_alloc_pruned[i]:
-                            # print("\nAlloc contains subset of bad information map!")
                             agent_alloc_pruned[i].append(a)
                             node.alive = False
                             prune = True
@@ -338,18 +310,19 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
                             break
                     if bad_alloc:
                         continue
-                    # for ai in a:            
-                    #     if single_map_agent[i][ai] == -1: #on indvidual map itself it does bad, it will definitely do bad on a set of maps involving this one
-                    #         # print("\nAlloc contains bad information map!")
-                    #         agent_alloc_pruned[i].append(a)
-                    #         node.alive = False
-                    #         prune = True
-                    #         nodes_pruned += 1 
-                    #         bad_alloc = True
-                    #         break
-                    # if bad_alloc:
-                    #     continue
+                    for ai in a:            
+                        if single_map_agent[i][ai] == -1: #on indvidual map itself it does bad, it will definitely do bad on a set of maps involving this one
+                            # print("\nAlloc contains bad information map!")
+                            agent_alloc_pruned[i].append(a)
+                            node.alive = False
+                            prune = True
+                            nodes_pruned += 1 
+                            bad_alloc = True
+                            break
+                    if bad_alloc:
+                        continue
                     agent_map_erg[a] = []
+                    
                     if len(a) > 1:
                         if scalarize:
                             pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
@@ -360,7 +333,6 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
                             for j in a:
                                 pdf += (1/len(a))*pdf_list[j]
                     else:
-                        # print("Single information map")
                         pdf = pdf_list[a[0]]
 
                     pdf = np.asarray(pdf.flatten())
@@ -377,11 +349,10 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
                         EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
                         erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
                         agent_map_erg[a].append(erg)
-                        # print("ERg: ", erg)
             
                         if erg > upper:
-                            # if len(a) == 1:
-                            #     single_map_agent[i][a[0]] = -1
+                            if len(a) == 1:
+                                single_map_agent[i][a[0]] = -1
                             node.alive = False
                             prune = True
                             # print("Don't explore further")
@@ -391,7 +362,6 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
                         node.indv_erg.append(erg)
                 else:
                     # print("\nAlready saw this allocation!")
-        
                     for e in agent_map_erg[a]:
                         if e > upper:
                             node.alive = False
@@ -413,37 +383,36 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
 
         explore_node = new_explore_node
 
-    # print("Number of nodes pruned: ", nodes_pruned)
-    # print("Number of nodes explored: ", nodes_explored)
     alloc_comb = generate_allocations(n_obj,n_agents)
-    # print("Total number of leaf nodes: ", len(alloc_comb))
     per_leaf_prunes = (len(alloc_comb) - nodes_explored)/len(alloc_comb)
-    # print("percentage of leaf nodes pruned: ", per_leaf_prunes)
 
     values = []
     alloc = []
     indv_erg = []
     find_best_allocation(root,values,alloc,indv_erg)
     # print("All paths found: ", alloc)
-    # print("Individual ergodicities: ", indv_erg)
-    # print("Number of agents: ", n_agents)
-
-    #Among all the allocations found, pick the one with min max erg
-    # max_erg = []
-    # for idx,e in enumerate(indv_erg):
-    #     if len(alloc[idx]) < n_agents+1:
-    #         max_erg.append(100)
-    #     else:
-    #         max_erg.append(max(e))
-
-    # print("Max ergodicities: ", max_erg)
-    min_idx = find_minmax(indv_erg)
-
-    best_alloc = alloc[min_idx]
-
-    # print("The best allocation according to minmax metric: ", best_alloc)
-    runtime = time.time() - start_time
-    return best_alloc,runtime,per_leaf_prunes,indv_erg[min_idx]
+    # breakpoint()
+    correct_erg = []
+    correct_alloc = []
+    for i in range(len(alloc)):
+        if len(alloc[i]) == n_agents + 1:
+            correct_erg.append(indv_erg[i])
+            correct_alloc.append(alloc[i])
+    # breakpoint()
+    if len(correct_erg) == 0:
+        best_alloc = incumbent
+        runtime = time.time() - start_time
+        print("Check this file")
+        # breakpoint()
+        return best_alloc,runtime,per_leaf_prunes,incumbent_erg
+    else:
+        min_idx = find_minmax(correct_erg)
+        best_alloc = correct_alloc[min_idx]
+        # print("The best allocation according to minmax metric: ", best_alloc)
+        runtime = time.time() - start_time
+                
+        # breakpoint()
+        return best_alloc,runtime,per_leaf_prunes,correct_erg[min_idx]
 
 def find_minmax(indv_erg):
 	sorted_erg = [sorted(x,reverse=True) for x in indv_erg]
@@ -479,14 +448,12 @@ def find_traj(file,alloc,problem,start_pos,Bounding_sphere=True):
     pdf_list = problem.pdfs
 
     for k,v in alloc.items():
-        # print(v)
         if k == None:
             continue
         if len(v) > 1:
             if scalarize:
                 pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
             if Bounding_sphere:
-                # print("Computing the center of the minimal bounding sphere")
                 pdf_center, _ = get_minimal_bounding_sphere([pdf_list[a] for a in v],problem.nA,problem.pix)
             else:
                 pdf = np.zeros((100,100))
@@ -505,92 +472,7 @@ def find_traj(file,alloc,problem,start_pos,Bounding_sphere=True):
 
         trajectories.append(ergodic_metric.GetTrajXY(control,problem.s0[3*k:3+3*k]))
     
-    return trajectories
-
-# def collision_check(og_trajectories,alloc,problem,recheck=False):
-#     if not recheck:
-#         trajectories = []
-#         for i in range(len(og_trajectories)):
-#             trajectories.append(np.array(og_trajectories[i][1]))
-        
-#         for i in range(len(trajectories)):
-#             for j in range(len(trajectories[i])):
-#                 trajectories[i][j][0] = round(trajectories[i][j][0], 1)
-#                 trajectories[i][j][1] = round(trajectories[i][j][1], 1)
-#     else:
-#         trajectories = og_trajectories
-    
-#     priorities = []
-#     count = 0
-    
-#     for i in range(len(trajectories)):
-#         for j in range(i+1,len(trajectories)):
-#             c = 0
-#             for k in range(1,len(trajectories[0])):
-#                 c += 1
-                
-#                 if trajectories[i][k][0] == trajectories[j][k][0] and trajectories[i][k][1] == trajectories[j][k][1]:
-#                     count += 1
-#                     scorei = 0
-#                     scorej = 0
-#                     for map in alloc[i]:
-#                         scorei += problem.pdfs[map][round(trajectories[i][k][1])][round(trajectories[i][k][0])]
-#                     for map in alloc[j]:
-#                         scorej += problem.pdfs[map][round(trajectories[j][k][1])][round(trajectories[j][k][0])]
-                    
-#                     if scorei >= scorej:
-#                         priorities.append((j,i,k)) #Make agent i wait
-#                         if k != 0:
-#                             l = k-1
-#                             while(trajectories[i][l][0] == trajectories[i][k][0] and trajectories[i][l][1] == trajectories[i][k][1]):
-#                                 l -= 1
-#                             for m in range(l,k+1):
-#                                 trajectories[i][m][0] = trajectories[i][l][0]
-#                                 trajectories[i][m][1] = trajectories[i][l][1]
-#                     else:
-#                         priorities.append((i,j,k))
-#                         if k != 0:
-#                             l = k-1
-#                             while(trajectories[j][l][0] == trajectories[j][k][0] and trajectories[j][l][1] == trajectories[j][k][1]):
-#                                 print(l,trajectories[j][l])
-#                                 l -= 1
-#                             for m in range(l,k+1):
-#                                 trajectories[j][m][0] = trajectories[j][l][0]
-#                                 trajectories[j][m][1] = trajectories[j][l][1]
-#     print("Total number of collisions in the trajectory: ", count)
-#     print("Priorities gathered: ", priorities)
-#     return trajectories
-
-## The way we display the collisions has to be corrected ##
-# def show_collisions(og_trajectories,problem,alloc):
-#     collision_points = []
-#     trajectories = []
-#     for i in range(len(og_trajectories)):
-#         trajectories.append(np.array(og_trajectories[i][1]))
-#     for i in range(len(trajectories)):
-#         for j in range(len(trajectories[i])):
-#             trajectories[i][j][0] = round(trajectories[i][j][0], 1)
-#             trajectories[i][j][1] = round(trajectories[i][j][1], 1)
-#     count = 0
-#     for i in range(len(trajectories)):
-#         for j in range(len(trajectories)):
-#             if j == i:
-#                 continue
-#             c = 0
-#             for k in range(1,len(trajectories[0])):
-#                 c += 1
-#                 if trajectories[i][k][0] == trajectories[j][k][0] and trajectories[i][k][1] == trajectories[j][k][1]:
-#                     collision_points.append((k,og_trajectories[i][1][k][0],og_trajectories[i][1][k][1]))
-#                     count += 1
-#     tj = []
-#     for k in range(len(og_trajectories)):
-#         tj.append(np.array(og_trajectories[k][1]))
-
-#     print("Total number of collisions in the trajectory: ", count)
-#     display_map(problem,problem.s0,alloc,tj=tj,collision_points=collision_points)
-
-#     return    
-         
+    return trajectories         
 
 if __name__ == "__main__":
     n_agents = 4
@@ -601,15 +483,24 @@ if __name__ == "__main__":
     indv_erg_best = {}
     best_traj = {}
 
+    # done = np.load("./Final_exp/BB_MBS_scal_runtime.npy", allow_pickle=True)
+    # done = done.ravel()[0]
+
     start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
     for file in os.listdir("build_prob/random_maps/"):
         pbm_file = "build_prob/random_maps/"+file
         print("\nFile: ", pbm_file)
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        if len(problem.pdfs) < n_agents:
+        if len(problem.pdfs) < n_agents or len(problem.pdfs) > 8:
             print("Na < No")
             continue
+
+        # if file in done.keys():
+        #     continue
+
+        # if file != "random_map_69.pickle":
+        #     continue
 
         final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=True)
         print("file: ", file)
@@ -618,6 +509,7 @@ if __name__ == "__main__":
         print("per pruned: ", per_leaf_prunes)
         print("indv_erg: ", indv_erg)
         print("minmax metric: ", max(indv_erg))
+        print("*********************************************************************")
 
         run_times[file] = runtime
         best_allocs[file] = final_allocation
@@ -626,19 +518,17 @@ if __name__ == "__main__":
 
         trajectories = find_traj(file,final_allocation,problem,start_pos)
 
+        # We got the trajectory of each agent, now get trajectories for each map based on allocation
         tj = []
-        for i in range(len(trajectories)):
-            tj.append(trajectories[i][1])
+        for i in range(len(problem.pdfs)):
+            for j in range(n_agents):
+                if i in final_allocation[j]:
+                    tj.append(trajectories[j][1])
+                    break
 
         best_traj[file] = tj
 
-        # display_map(problem,start_pos.item().get(file),final_allocation,tj=tj)
-
-        # feasible_trajectories = collision_check(trajectories,final_allocation,problem)
-
-        # print("Checking if the feasible trajectories is indeed collision free after modification")
-
-        # new_traj = collision_check(feasible_trajectories,final_allocation,problem,recheck=True)
+        display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj)
 
         np.save("Final_exp/BB_MBS_scal_runtime.npy", run_times)
         np.save("Final_exp/BB_MBS_scal_alloc.npy",best_allocs)
