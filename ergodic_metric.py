@@ -2,7 +2,7 @@ import numpy as np
 from jax import vmap, jit, grad
 import jax.numpy as jnp
 from jax.lax import scan
-from jax.config import config; config.update("jax_enable_x64", True)
+# from jax.config import config; config.update("jax_enable_x64", True)
 from functools import partial
 
 rob_vel = 0.8
@@ -80,7 +80,7 @@ class ErgCalc(object):
 		self.phik = phik/self.hk		  
 
 		# for reconstruction
-		self.phik_recon = jnp.dot(self.phik, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
+		# self.phik_recon = jnp.dot(self.phik, vmap(self.fk_vmap, in_axes=(None, 0))(_s, self.k)).reshape(X.shape)
 		
 		# to compute gradient func
 		self.gradient = jit(grad(self.fourier_ergodic_loss))

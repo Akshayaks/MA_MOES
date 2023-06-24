@@ -249,6 +249,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
             if scalarize:
                 pdf = scalarize_minmax([pdf_list[a] for a in v],problem.s0[k*3:k*3+3],problem.nA)
             if Bounding_sphere:
+                # print("Computing MBS")
                 pdf_center, _ = get_minimal_bounding_sphere([pdf_list[a] for a in v],problem.nA,problem.pix)
             else:
                 pdf = np.zeros((100,100))
@@ -276,6 +277,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
     print("Incumbent allocation: ", incumbent)
     print("Incumber Ergodicities: ", incumbent_erg)
     print("Initial Upper: ", upper)
+    # breakpoint()
 
     #Start the tree with the root node being [], blank assignment
     root = Node(None, [], [], np.inf, np.inf, [], None)
@@ -287,12 +289,14 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
     agent_alloc_pruned = [[] for _ in range(n_agents)]
 
     for i in range(n_agents):
+        # print("Agent: ", i)
         agent_map_erg = {}
         new_explore_node = []
         for curr_node in explore_node:
             alloc_comb = generate_alloc_nodes(curr_node,n_obj,n_agents)
 
             for a in alloc_comb:
+                # print("Alloc: ", a)
                 node = Node(i, a, [], np.inf, np.inf, [], curr_node)                
                 prune = False
                 bad_alloc = False
@@ -302,6 +306,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
 
                     for s in subsets:
                         if s in agent_alloc_pruned[i]:
+                            # print("\nAlloc contains a bad subset of info maps")
                             agent_alloc_pruned[i].append(a)
                             node.alive = False
                             prune = True
@@ -323,11 +328,13 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
                         continue
                     agent_map_erg[a] = []
                     
+                    pdf = np.zeros((100,100))
                     if len(a) > 1:
                         if scalarize:
                             pdf = scalarize_minmax([pdf_list[j] for j in a],problem.s0[i*3:i*3+3],problem.nA)
                         elif Bounding_sphere:
-                            pdf_center, _ = get_minimal_bounding_sphere([pdf_list[ai] for ai in a],problem.nA,problem.pix)
+                            # print("Finding MBS")
+                            pdf_center, _ = get_minimal_bounding_sphere([pdf_list[j] for j in a],problem.nA,problem.pix)
                         else:
                             pdf = np.zeros((100,100))
                             for j in a:
@@ -339,16 +346,19 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
 
                     #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
                     if Bounding_sphere and len(a) > 1:
-                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
+                        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
+                        # print("Erg on scal: ", erg[-1])
                     else:
                         control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
                     #Can have a heuristic to show the order in which to evaluate the indv ergodicities
+                    # print("Computing indv erg for: ", a)
                     for p in a:
                         pdf_indv = np.asarray(pdf_list[p].flatten())
                         EC = ergodic_metric.ErgCalc(pdf_indv,1,problem.nA,n_scalar,problem.pix)
                         erg = EC.fourier_ergodic_loss(control,problem.s0[3*i:3+3*i])
                         agent_map_erg[a].append(erg)
+                        # print(p,erg)
             
                         if erg > upper:
                             if len(a) == 1:
@@ -382,6 +392,7 @@ def branch_and_bound(pbm_file, n_agents, n_scalar, start_pos, random_start=False
                     new_explore_node.append(node)
 
         explore_node = new_explore_node
+        # breakpoint()
 
     alloc_comb = generate_allocations(n_obj,n_agents)
     per_leaf_prunes = (len(alloc_comb) - nodes_explored)/len(alloc_comb)
@@ -499,7 +510,7 @@ if __name__ == "__main__":
         # if file in done.keys():
         #     continue
 
-        # if file != "random_map_69.pickle":
+        # if file != "random_map_28.pickle":
         #     continue
 
         final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=True)
@@ -528,12 +539,12 @@ if __name__ == "__main__":
 
         best_traj[file] = tj
 
-        display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj)
+        # display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj)
 
-        np.save("Final_exp/BB_MBS_scal_runtime.npy", run_times)
-        np.save("Final_exp/BB_MBS_scal_alloc.npy",best_allocs)
-        np.save("Final_exp/BB_MBS_scal_pruned.npy",per_leaf_prunes_list)
-        np.save("Final_exp/BB_MBS_scal_indv_erg.npy", indv_erg_best)
-        np.save("Final_exp/BB_MBS_scal_traj.npy",best_traj)
+        # np.save("Final_exp/BB_MBS_scal_runtime.npy", run_times)
+        # np.save("Final_exp/BB_MBS_scal_alloc.npy",best_allocs)
+        # np.save("Final_exp/BB_MBS_scal_pruned.npy",per_leaf_prunes_list)
+        # np.save("Final_exp/BB_MBS_scal_indv_erg.npy", indv_erg_best)
+        # np.save("Final_exp/BB_MBS_scal_traj.npy",best_traj)
 
 

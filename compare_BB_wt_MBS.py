@@ -33,6 +33,7 @@ if __name__ == "__main__":
     no_runtime_sphere_greater = 0
     avg_inc_runtime = 0
     sphere_higher_minmax = 0
+    MBS_better_alloc = 0
 
     for file in os.listdir("build_prob/random_maps/"):
         
@@ -76,20 +77,30 @@ if __name__ == "__main__":
         if matching:
             # print("Same BB wt")
             same_alloc += 1
+        # else:
+        #     print("File: ", file)
+        #     print("MBS alloc: ", alloc_MBS)
+        #     print("wt alloc: ", alloc_wt)
         
         if runtime_wt[file] < runtime_MBS[file]:
             no_runtime_sphere_greater += 1
             avg_inc_runtime += (runtime_MBS[file] - runtime_wt[file])/runtime_wt[file]
         
-        if max(erg_MBS) > max(erg_wt):
+        if not matching and max(erg_MBS) > max(erg_wt):
             sphere_higher_minmax += 1
-            print("File: ", file)
-            print("Diff: ", max(erg_MBS) - max(erg_wt))
-            breakpoint()
+            # print("File: ", file)
+            # print("MBS alloc: ", alloc_MBS)
+            # print("wt alloc: ", alloc_wt)
+            print("Better wt Diff: ", max(erg_MBS) - max(erg_wt))
+            # breakpoint()
+        if not matching and max(erg_MBS) < max(erg_wt):
+            print("Better MBS Diff: ", - max(erg_MBS) + max(erg_wt))
+            MBS_better_alloc += 1
     
     # print("Length of the output files: ", len(best_alloc_MBS), len(best_alloc_wt), len(best_alloc_sphere))
     print("Total number of test cases considered: ", count)
     print("Number of cases when BB wt matches BB MBS: ", same_alloc)
+    print("Number of cases when BB MBS gives better minmax metric alloc: ", MBS_better_alloc)
     print("Number of cases when BB wt is equivalent to BB MBS: ", eq_alloc)
     print("Number of cases where minmax of BB MBS is greater than BB wt: ", sphere_higher_minmax)
     print("Number of cases when BB MBS has greater runtime than BB wt: ", no_runtime_sphere_greater)

@@ -1,7 +1,7 @@
 import numpy as onp
 import jax.numpy as np
 from jax.experimental import optimizers
-from jax.config import config; config.update("jax_enable_x64", True)
+# from jax.config import config; config.update("jax_enable_x64", True)
 
 import matplotlib.pyplot as plt
 import ergodic_metric
@@ -20,6 +20,7 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 	if direct_FC is not None:
 		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 		erg_calc.phik = direct_FC
+		erg_calc.phik = erg_calc.phik/erg_calc.phik[0]
 	else:
 		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, nA, n_fourier, nPix)
 
