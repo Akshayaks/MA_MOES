@@ -513,6 +513,10 @@ if __name__ == "__main__":
         # if file != "random_map_28.pickle":
         #     continue
 
+        print("No: ", len(problem.pdfs))
+
+        # display_map(problem,start_pos.item().get(file),{0:[0],1:[1],2:[2],3:[3]},pbm_file=file)
+
         final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=True)
         print("file: ", file)
         print("Final allocation: ", final_allocation)

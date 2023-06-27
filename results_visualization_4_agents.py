@@ -4,23 +4,23 @@ import pdb
 import os
 import common
 
-r_BB = np.load("./results_canebrake/BB_opt_runtime_4_agents.npy",allow_pickle=True)
-# r_BB2 = np.load("./results_canebrake/remaining_BB_opt_runtime_4_agents.npy",allow_pickle=True)
-r_sim = np.load("./results_canebrake/BB_similarity_clustering_runtime_4_agents.npy",allow_pickle=True)
+r_BB = np.load("./Final_exp/BB_MBS_scal_runtime.npy",allow_pickle=True)
+# r_sim = np.load("./results_canebrake/BB_similarity_clustering_runtime_4_agents.npy",allow_pickle=True)
+r_sim = np.load("./Results_npy_files/BB_bounding_sphere_clustering_random_maps_runtime_4_agents.npy",allow_pickle=True)
 # r_sim = np.load("BB_similarity_clustering_random_maps_runtime_4_agents.npy",allow_pickle=True)
 r_gr = np.load("./results_canebrake/greedy_4_agents_runtime.npy",allow_pickle=True)
 r_dist = np.load("./results_canebrake/dist_4_agents_runtime.npy",allow_pickle=True)
 
-a_BB = np.load("./results_canebrake/BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
-# a_BB2 = np.load("./results_canebrake/remaining_BB_opt_Best_alloc_4_agents.npy",allow_pickle=True)
-a_sim = np.load("./results_canebrake/BB_similarity_clustering_best_alloc_4_agents.npy",allow_pickle=True)
+a_BB = np.load("./Final_exp/BB_MBS_scal_alloc.npy",allow_pickle=True)
+# a_sim = np.load("./results_canebrake/BB_similarity_clustering_best_alloc_4_agents.npy",allow_pickle=True)
+a_sim = np.load("./Results_npy_files/BB_bounding_sphere_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
 # a_sim = np.load("BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
 a_gr = np.load("./results_canebrake/greedy_4_agents_best_alloc.npy",allow_pickle=True)
 a_dist = np.load("./results_canebrake/dist_4_agents_best_alloc.npy",allow_pickle=True)
 
-e_BB = np.load("./results_canebrake/BB_opt_indv_erg_4_agents.npy",allow_pickle=True)
-# e_BB2 = np.load("./results_canebrake/remaining_BB_opt_indv_erg_4_agents.npy",allow_pickle=True)
-e_sim = np.load("./results_canebrake/BB_similarity_clustering_indv_erg_4_agents.npy",allow_pickle=True)
+e_BB = np.load("./Final_exp/BB_MBS_scal_indv_erg.npy",allow_pickle=True)
+# e_sim = np.load("./results_canebrake/BB_similarity_clustering_indv_erg_4_agents.npy",allow_pickle=True)
+e_sim = np.load("./Results_npy_files/BB_bounding_sphere_clustering_random_maps_indv_erg_4_agents.npy",allow_pickle=True)
 # e_sim = np.load("BB_similarity_clustering_random_maps_indv_erg_4_agents.npy",allow_pickle=True)
 e_gr = np.load("./results_canebrake/greedy_4_agents_indv_erg.npy",allow_pickle=True)
 e_dist = np.load("./results_canebrake/dist_4_agents_indv_erg.npy",allow_pickle=True)
@@ -68,7 +68,7 @@ for pbm_file in os.listdir("./build_prob/random_maps/"):
     pbm_file_complete = "./build_prob/random_maps/" + pbm_file
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
-    if pbm_file not in r_BB.keys() or pbm_file not in r_sim.keys() or pbm_file not in r_gr.keys() or pbm_file not in r_dist.keys():
+    if pbm_file not in r_BB.keys() or pbm_file not in r_sim.keys(): # or pbm_file not in r_gr.keys() or pbm_file not in r_dist.keys():
         continue
 
     map_files.append(pbm_file)
@@ -147,7 +147,7 @@ for j in range(len(map_files)):
     pbm_file_complete = "./build_prob/random_maps/" + k
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
     print(len(problem.pdfs))
-    if k not in r_BB.keys() or k not in r_sim.keys() or k not in r_gr.keys() or k not in r_dist.keys():
+    if k not in r_BB.keys() or k not in r_sim.keys(): # or k not in r_gr.keys() or k not in r_dist.keys():
         continue
     if r_BB[k] > 0:
         n_maps_new.append(n_maps[j])
@@ -187,7 +187,7 @@ for j in range(len(map_files)):
 
         if len(e_BB[k]) < n_agents or len(e_sim[k]) < n_agents:
             incomplete_alloc += 1
-            print("***Incimplete Allocation****")
+            print("***Incomplete Allocation****")
             print("e_BB: ", e_BB[k])
             print("e_sim: ", e_sim[k])
             pdb.set_trace()
