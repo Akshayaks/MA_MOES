@@ -4,12 +4,13 @@ import common
 from ergodic_coverage import ErgCover
 import ergodic_metric
 from utils import *
-from explicit_allocation import *
+# from explicit_allocation import scalarize_minmax
 import time
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import KMeans
 from kneed import KneeLocator
+from miniball import miniball
 
 np.random.seed(100)
 
@@ -110,7 +111,6 @@ def update_upper(node,upper):
 def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 	#Allocate based on a circle around the agent and calculating the information in that region
 
-	n_obj = len(problem.pdfs)
 	agents_allotted = []
 	clusters_allotted = []
 	if node:
@@ -176,7 +176,7 @@ def greedy_alloc(problem, clusters, n_agents, n_scalar, node = None):
 					allocation[i] = [idx]
 					found = True
 					clusters_assigned[idx] = 1
-			print("\nClusters assigned: ", clusters_assigned) 
+			# print("\nClusters assigned: ", clusters_assigned) 
 	else:
 		print("No > Na")
 		agents_assigned = np.zeros(n_agents)
@@ -206,8 +206,21 @@ def get_subsets(s):
         subsets = subsets + list(itertools.combinations(s, i))
     return subsets
 
+def get_minimal_bounding_sphere(pdf_list,nA,pix):
+    FC = []
+    for pdf in pdf_list:
+        EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
+        FC.append(EC.phik*np.sqrt(EC.lamk))
+
+    res = miniball(np.asarray(FC,dtype=np.double))
+    pdf_FC = res["center"]
+    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+    minmax = res["radius"]
+    return pdf_FC, minmax
+
 def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 	start_time = time.time()
+	Bounding_sphere = True
 	n_scalar = 10
 	n_obj = len(problem.pdfs)
 
@@ -225,16 +238,25 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 	#Find the upper bound for the incumbent solution
 	for k,v in incumbent.items():
 		pdf = np.zeros((100,100))
+		maps = []
 		n_maps = 0
 		for a in v:
 			for mapi in clusters[a]:
 				pdf += pdf_list[mapi]
+				maps.append(pdf_list[mapi])
 				n_maps += 1
-		pdf = (1/n_maps)*pdf
+		if n_maps > 1:
+			if Bounding_sphere:
+				pdf_center, _ = get_minimal_bounding_sphere(maps,problem.nA,problem.pix)
+			else:
+				pdf = (1/n_maps)*pdf
 		pdf = np.asarray(pdf.flatten())
 		
 		#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-		control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+		if Bounding_sphere and n_maps > 1:
+			control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
+		else:
+			control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*k:3+3*k], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 		
 		for p in v:
 			for mapi in clusters[p]:
@@ -270,7 +292,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 					subsets = get_subsets(list(a))
 					for s in subsets:
 						if s in agent_alloc_pruned[i]:
-							print("\n**************************Alloc contains subset of bad information map!")
+							# print("\n**************************Alloc contains subset of bad information map!")
 							agent_alloc_pruned[i].append(a)
 							node.alive = False
 							prune = True
@@ -282,15 +304,27 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 					agent_cluster_erg[a] = []
 
 					pdf = np.zeros((100,100))
-					n_maps = len(am)
+					n_maps = 0
+					maps = []
+
 					for ai in a:
 						for mapi in clusters[ai]:
-							pdf += (1/n_maps)*pdf_list[mapi]
+							pdf += pdf_list[mapi]
+							n_maps += 1
+							maps.append(pdf_list[mapi])
+					
+					if Bounding_sphere and n_maps > 1:
+						pdf_center, _ = get_minimal_bounding_sphere(maps,problem.nA,problem.pix)
+					else:
+						pdf = pdf/n_maps
 					
 					pdf = np.asarray(pdf.flatten())
 
 					#Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-					control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+					if Bounding_sphere and n_maps > 1:
+						control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
+					else:
+						control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
 
 					for p in a:
 						for mapi in clusters[p]:
@@ -301,7 +335,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 							if erg > upper:
 								node.alive = False
 								prune = True
-								print("Don't explore further")
+								# print("Don't explore further")
 								nodes_pruned += 1 
 								agent_alloc_pruned[i].append(a)
 								break
@@ -309,12 +343,12 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 						if prune:
 							break
 				else:
-					print("\nAlready saw this allocation!")
+					# print("\nAlready saw this allocation!")
 					for e in agent_cluster_erg[a]:
 						if e > upper:
 							node.alive = False
 							prune = True
-							print("Don't explore further")
+							# print("Don't explore further")
 							nodes_pruned += 1 
 							break
 						node.indv_erg.append(e)
@@ -323,7 +357,7 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 					if(node.alive):
 						upper = update_upper(node,upper)
 				if not prune:
-					print("Not pruning this node")
+					# print("Not pruning this node")
 					node.cluster = a
 					node.tasks = am
 					curr_node.children.append(node)
@@ -334,7 +368,8 @@ def branch_and_bound(problem, clusters, n_agents, start=[-1], scalarize=False):
 	total_alloc = len(generate_allocations(n_obj,n_agents))
 	print("Total number of nodes: ", total_alloc*n_agents)
 	print("Percentage of nodes pruned: ", nodes_pruned/total_alloc)
-	return root, problem.s0
+	per_leaf_prunes = (total_alloc - nodes_explored)/total_alloc
+	return root, per_leaf_prunes
 
 def find_minmax(indv_erg):
 	sorted_erg = [sorted(x,reverse=True) for x in indv_erg]
@@ -366,7 +401,7 @@ def find_minmax(indv_erg):
 
 def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	start_time = time.time()
-	root, start_pos = branch_and_bound(pbm,clusters,n_agents,start_pos)
+	root, per_leaf_pruned = branch_and_bound(pbm,clusters,n_agents,start_pos)
 
 	values = []
 	alloc = []
@@ -376,12 +411,27 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	print("Individual ergodicities: ", indv_erg)
 	print("Number of agents: ", n_agents)
 	print("Number of clusters: ", clusters)
-	min_idx = find_minmax(indv_erg)
-	best_alloc = alloc[min_idx]
 
+	correct_erg = []
+	correct_alloc = []
+	for i in range(len(alloc)):
+		if len(alloc[i]) == n_agents + 1:
+			correct_erg.append(indv_erg[i])
+			correct_alloc.append(alloc[i])
+	
+	min_idx = find_minmax(correct_erg)
+	best_alloc = correct_alloc[min_idx]
 	print("The best allocation according to minmax metric: ", best_alloc)
 	runtime = time.time() - start_time
-	return best_alloc,indv_erg[min_idx],start_pos,runtime
+			
+	# breakpoint()
+	return best_alloc,correct_erg[min_idx],per_leaf_pruned,runtime
+	# min_idx = find_minmax(indv_erg)
+	# best_alloc = alloc[min_idx]
+
+	# print("The best allocation according to minmax metric: ", best_alloc)
+	# runtime = time.time() - start_time
+	# return best_alloc,indv_erg[min_idx],start_pos,runtime
 
 def k_means_clustering(pbm,n_agents,n_scalar):
 	
@@ -392,7 +442,6 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 		EC = ergodic_metric.ErgCalc(pdf.flatten(),1,pbm.nA,n_scalar,pbm.pix)
 		data.append(EC.phik*np.sqrt(EC.lamk))
 	cost =[]
-	s_score = []
 	for i in range(1, len(pdfs)+1):
 		KM = KMeans(n_clusters = i, max_iter = 500, random_state=0)
 		KM.fit(data)
@@ -431,6 +480,7 @@ if __name__ == "__main__":
 	run_times = {}
 	best_allocs = {}
 	indv_erg_best = {}
+	per_leaf_pruned = {}
 
 	# best_alloc_done = np.load("./BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
 	# best_alloc_done = best_alloc_done.ravel()[0]
@@ -440,7 +490,7 @@ if __name__ == "__main__":
 
 		problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-		if len(problem.pdfs) < n_agents:
+		if len(problem.pdfs) < n_agents or len(problem.pdfs) > 8:
 			print("Less than 4")
 			continue
 
@@ -450,7 +500,7 @@ if __name__ == "__main__":
 		clusters = k_means_clustering(problem,n_agents,n_scalar)
 		print("The clusters are: ", clusters)
 		
-		best_alloc_OG, indv_erg_OG, start_pos_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
+		best_alloc_OG, indv_erg_OG, per_leaf_pruned_OG, runtime = branch_and_bound_main(problem,clusters,n_agents)
 		
 		print("File: ", file)
 		print("\nBest allocation is: ", best_alloc_OG)
@@ -459,12 +509,14 @@ if __name__ == "__main__":
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG
 		indv_erg_best[file] = indv_erg_OG
+		per_leaf_pruned[file] = per_leaf_pruned_OG
 
-		breakpoint()
+		# breakpoint()
 
-		# np.save("BB_similarity_clustering_random_maps_runtime_4_agents_remaining.npy", run_times)
-		# np.save("BB_similarity_clustering_random_maps_best_alloc_4_agents_remaining.npy", best_allocs)
-		# np.save("BB_similarity_clustering_random_maps_indv_erg_4_agents_remaining.npy", indv_erg_best)
+		np.save("BB_k_means_MBS_runtime.npy", run_times)
+		np.save("BB_k_means_MBS_alloc.npy", best_allocs)
+		np.save("BB_k_means_MBS_erg.npy", indv_erg_best)
+		np.save("BB_k_means_MBS_pruned.npy",per_leaf_pruned)
 
 
 

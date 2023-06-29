@@ -10,10 +10,12 @@ if __name__ == "__main__":
     best_alloc_bb = np.load("./Final_exp/BB_wt_scal_alloc.npy",allow_pickle=True)
     best_alloc_bb = best_alloc_bb.ravel()[0]
 
-    best_alloc_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
+    # best_alloc_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
+    best_alloc_sim = np.load("./BB_k_means_MBS_alloc.npy",allow_pickle=True)
     best_alloc_sim = best_alloc_sim.ravel()[0]
 
-    best_alloc_sphere = np.load("./Results_npy_files/BB_bounding_sphere_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
+    # best_alloc_sphere = np.load("./Results_npy_files/BB_bounding_sphere_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
+    best_alloc_sphere = np.load("./BB_sphere_MBS_alloc.npy",allow_pickle=True)
     best_alloc_sphere = best_alloc_sphere.ravel()[0]
 
     #####################################################
@@ -23,10 +25,12 @@ if __name__ == "__main__":
     indv_erg_bb = np.load("./Final_exp/BB_wt_scal_indv_erg.npy",allow_pickle=True)
     indv_erg_bb = indv_erg_bb.ravel()[0]
 
-    indv_erg_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_indv_erg_4_agents.npy",allow_pickle=True)
+    # indv_erg_sim = np.load("./Results_npy_files/BB_similarity_clustering_random_maps_indv_erg_4_agents.npy",allow_pickle=True)
+    indv_erg_sim = np.load("./BB_k_means_MBS_erg.npy",allow_pickle=True)
     indv_erg_sim = indv_erg_sim.ravel()[0]
 
-    indv_erg_sphere = np.load("./Results_npy_files/BB_bounding_sphere_clustering_random_maps_indv_erg_4_agents.npy",allow_pickle=True)
+    # indv_erg_sphere = np.load("./Results_npy_files/BB_bounding_sphere_clustering_random_maps_indv_erg_4_agents.npy",allow_pickle=True)
+    indv_erg_sphere = np.load("./BB_sphere_MBS_erg.npy",allow_pickle=True)
     indv_erg_sphere = indv_erg_sphere.ravel()[0]
 
     ######################################################

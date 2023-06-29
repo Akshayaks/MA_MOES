@@ -503,7 +503,7 @@ if __name__ == "__main__":
         print("\nFile: ", pbm_file)
         problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-        if len(problem.pdfs) < n_agents or len(problem.pdfs) > 8:
+        if len(problem.pdfs) < 9 or len(problem.pdfs) > 10:
             print("Na < No")
             continue
 
@@ -543,12 +543,12 @@ if __name__ == "__main__":
 
         best_traj[file] = tj
 
-        # display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj)
+        display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj)
 
-        # np.save("Final_exp/BB_MBS_scal_runtime.npy", run_times)
-        # np.save("Final_exp/BB_MBS_scal_alloc.npy",best_allocs)
-        # np.save("Final_exp/BB_MBS_scal_pruned.npy",per_leaf_prunes_list)
-        # np.save("Final_exp/BB_MBS_scal_indv_erg.npy", indv_erg_best)
-        # np.save("Final_exp/BB_MBS_scal_traj.npy",best_traj)
+        np.save("Final_exp/BB_MBS_scal_runtime_remaining.npy", run_times)
+        np.save("Final_exp/BB_MBS_scal_alloc_remaining.npy",best_allocs)
+        np.save("Final_exp/BB_MBS_scal_pruned_remaining.npy",per_leaf_prunes_list)
+        np.save("Final_exp/BB_MBS_scal_indv_erg_remaining.npy", indv_erg_best)
+        np.save("Final_exp/BB_MBS_scal_traj_remaining.npy",best_traj)
 
 
