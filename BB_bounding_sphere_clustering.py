@@ -424,15 +424,7 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	best_alloc = correct_alloc[min_idx]
 	print("The best allocation according to minmax metric: ", best_alloc)
 	runtime = time.time() - start_time
-			
-	# breakpoint()
 	return best_alloc,correct_erg[min_idx],per_leaf_pruned,runtime
-	# min_idx = find_minmax(indv_erg)
-	# best_alloc = alloc[min_idx]
-
-	# print("The best allocation according to minmax metric: ", best_alloc)
-	# runtime = time.time() - start_time
-	# return best_alloc,indv_erg[min_idx],start_pos,runtime
 
 def get_minimal_bounding_sphere(pdf_list,nA,pix):
     FC = []
@@ -452,7 +444,7 @@ def generate_alloc_nodes_for_clustering(curr_node,n_obj,n_agents):
     while(curr_node):
         maps_assigned = maps_assigned + list(curr_node.tasks)
         curr_node = curr_node.parent
-    maps_left = [] #list(set(np.arange(1,n_obj+1)) - set(maps_assigned))
+    maps_left = []
     for i in range(n_obj):
         if i not in maps_assigned:
             maps_left.append(i)
@@ -610,12 +602,6 @@ if __name__ == "__main__":
 	indv_erg_best = {}
 	per_leaf_pruned = {}
 
-	# best_alloc_done = np.load("./BB_opt_best_alloc_random_maps_4_agents_sphere.npy",allow_pickle=True)
-	# best_alloc_done = best_alloc_done.ravel()[0]
-
-	# indv_done = np.load("./BB_opt_indv_erg_random_maps_4_agents_sphere.npy",allow_pickle=True)
-	# indv_done = indv_done.ravel()[0]
-
 	for file in os.listdir("build_prob/random_maps/"):
 		print("File: ", file)
 		pbm_file = "build_prob/random_maps/"+file
@@ -643,15 +629,10 @@ if __name__ == "__main__":
 		print("\nBest allocation is: ", best_alloc_OG)
 		print("\nBest Individual ergodicity: ", max(indv_erg_OG))
 
-		# print("Alloc: ", best_alloc_done[pbm_file])
-		# print("max_erg: ", max(indv_done[pbm_file]))
-
 		run_times[file] = runtime
 		best_allocs[file] = best_alloc_OG
 		indv_erg_best[file] = indv_erg_OG
 		per_leaf_pruned[file] = per_leaf_pruned_OG
-
-		# breakpoint()
 
 		np.save("BB_sphere_MBS_runtime.npy", run_times)
 		np.save("BB_sphere_MBS_alloc.npy", best_allocs)

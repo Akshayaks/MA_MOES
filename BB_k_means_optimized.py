@@ -4,7 +4,6 @@ import common
 from ergodic_coverage import ErgCover
 import ergodic_metric
 from utils import *
-# from explicit_allocation import scalarize_minmax
 import time
 import matplotlib.pyplot as plt
 
@@ -423,15 +422,7 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 	best_alloc = correct_alloc[min_idx]
 	print("The best allocation according to minmax metric: ", best_alloc)
 	runtime = time.time() - start_time
-			
-	# breakpoint()
 	return best_alloc,correct_erg[min_idx],per_leaf_pruned,runtime
-	# min_idx = find_minmax(indv_erg)
-	# best_alloc = alloc[min_idx]
-
-	# print("The best allocation according to minmax metric: ", best_alloc)
-	# runtime = time.time() - start_time
-	# return best_alloc,indv_erg[min_idx],start_pos,runtime
 
 def k_means_clustering(pbm,n_agents,n_scalar):
 	
@@ -445,7 +436,6 @@ def k_means_clustering(pbm,n_agents,n_scalar):
 	for i in range(1, len(pdfs)+1):
 		KM = KMeans(n_clusters = i, max_iter = 500, random_state=0)
 		KM.fit(data)
-		# cluster_labels = KM.labels_
 		cost.append(KM.inertia_)
 	x = np.arange(1,len(pdfs)+1)
 	kn = KneeLocator(x, cost, curve='convex', direction='decreasing', online=True, S=1)
@@ -482,9 +472,6 @@ if __name__ == "__main__":
 	indv_erg_best = {}
 	per_leaf_pruned = {}
 
-	# best_alloc_done = np.load("./BB_similarity_clustering_random_maps_best_alloc_4_agents.npy",allow_pickle=True)
-	# best_alloc_done = best_alloc_done.ravel()[0]
-
 	for file in os.listdir("build_prob/random_maps/"):
 		pbm_file = "build_prob/random_maps/"+file
 
@@ -510,8 +497,6 @@ if __name__ == "__main__":
 		best_allocs[file] = best_alloc_OG
 		indv_erg_best[file] = indv_erg_OG
 		per_leaf_pruned[file] = per_leaf_pruned_OG
-
-		# breakpoint()
 
 		np.save("BB_k_means_MBS_runtime.npy", run_times)
 		np.save("BB_k_means_MBS_alloc.npy", best_allocs)
