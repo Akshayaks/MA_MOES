@@ -115,11 +115,17 @@ if __name__ == "__main__":
     run_times = {}
     best_allocs = {}
     indv_erg_best = {}
+    
+    done = np.load("dist_4_agents_runtime.npy", allow_pickle=True)
+    done = done.ravel()[0]
 
     for file in os.listdir("build_prob/random_maps/"):
         start_time = time.time()
         pbm_file = "build_prob/random_maps/"+file
         print("\nFile: ", file)
+
+        if file in done.keys():
+            continue
         # if file != "random_map_28.pickle":
         #      continue
 
@@ -227,9 +233,9 @@ if __name__ == "__main__":
         best_allocs[file] = best_alloc
         indv_erg_best[file] = incumbent_erg
 
-        np.save("dist_4_agents_runtime.npy", run_times)
-        np.save("dist_4_agents_best_alloc.npy", best_allocs)
-        np.save("dist_4_agents_indv_erg.npy", indv_erg_best)
+        np.save("dist_4_agents_runtime_remaining.npy", run_times)
+        np.save("dist_4_agents_best_alloc_remaining.npy", best_allocs)
+        np.save("dist_4_agents_indv_erg_remaining.npy", indv_erg_best)
 
 
 

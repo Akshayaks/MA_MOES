@@ -136,7 +136,7 @@ def display_map(pbm,start_pos,alloc,pbm_file=None,tj=None,title=None,ref=None,co
     if title:
       fig.suptitle(title)
     if pbm_file:
-      plt.savefig("./Final_exp/traj_random_maps_BB_MBS_scal/"+pbm_file+".jpg")
+      plt.savefig("./Final_exp/traj_random_maps_BB_wt_scal/"+pbm_file+".jpg")
     if ref:
       plt.legend(["Reference trajectory", "Actual trajectory"])
     # plt.show()

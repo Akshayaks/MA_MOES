@@ -494,7 +494,7 @@ if __name__ == "__main__":
     indv_erg_best = {}
     best_traj = {}
 
-    # done = np.load("./Final_exp/BB_MBS_scal_runtime.npy", allow_pickle=True)
+    # done = np.load("./Final_exp/BB_MBS_wt_runtime_remaining.npy", allow_pickle=True)
     # done = done.ravel()[0]
 
     start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
@@ -517,7 +517,7 @@ if __name__ == "__main__":
 
         # display_map(problem,start_pos.item().get(file),{0:[0],1:[1],2:[2],3:[3]},pbm_file=file)
 
-        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=True)
+        final_allocation, runtime, per_leaf_prunes, indv_erg = branch_and_bound(file,n_agents,n_scalar,start_pos,random_start=False,scalarize=False,Bounding_sphere=False)
         print("file: ", file)
         print("Final allocation: ", final_allocation)
         print("Runtime: ", runtime)
@@ -545,10 +545,10 @@ if __name__ == "__main__":
 
         display_map(problem,start_pos.item().get(file),final_allocation,pbm_file=file,tj=tj)
 
-        np.save("Final_exp/BB_MBS_scal_runtime_remaining.npy", run_times)
-        np.save("Final_exp/BB_MBS_scal_alloc_remaining.npy",best_allocs)
-        np.save("Final_exp/BB_MBS_scal_pruned_remaining.npy",per_leaf_prunes_list)
-        np.save("Final_exp/BB_MBS_scal_indv_erg_remaining.npy", indv_erg_best)
-        np.save("Final_exp/BB_MBS_scal_traj_remaining.npy",best_traj)
+        np.save("Final_exp/BB_MBS_wt_runtime_remaining.npy", run_times)
+        np.save("Final_exp/BB_MBS_wt_alloc_remaining.npy",best_allocs)
+        np.save("Final_exp/BB_MBS_wt_pruned_remaining.npy",per_leaf_prunes_list)
+        np.save("Final_exp/BB_MBS_wt_indv_erg_remaining.npy", indv_erg_best)
+        np.save("Final_exp/BB_MBS_wt_traj_remaining.npy",best_traj)
 
 
