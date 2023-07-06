@@ -78,11 +78,16 @@ for pbm_file in os.listdir("./build_prob/random_maps/"):
 
 map_files = [x for _, x in sorted(zip(n_maps, map_files))]
 n_maps.sort()
+count_maps = np.zeros(11)
 for i in range(len(map_files)):
     pbm_file_complete = "./build_prob/random_maps/" + map_files[i]
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
     print(len(problem.pdfs))
+    count_maps[len(problem.pdfs)] += 1
 print("/n n_maps: ", n_maps)
+for k in range(11):
+    print(k,count_maps[k])
+    print("\n")
 breakpoint()
 
 # result = data.groupby(["Testno"])['Nummaps'].aggregate(np.median).reset_index()
@@ -146,6 +151,8 @@ print("\nLen of r_dist: ", len(r_dist))
 breakpoint()
 
 for j in range(len(map_files)):
+    if j == 70:
+        break
     k = map_files[j]
     pbm_file_complete = "./build_prob/random_maps/" + k
     problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
@@ -202,25 +209,25 @@ for j in range(len(map_files)):
             breakpoint()
             continue
 
-        if max(e_BB[k]) > max(e_km[k]):
-            print("File: ", k)
-            print("BB alloc: ", a_BB[k])
-            print("km alloc: ", a_km[k])
-            print(max(e_BB[k]) - max(e_km[k]))
-            breakpoint()
-        minmax_erg_diff.append(-max(e_BB[k]) + max(e_km[k]))
-        minmax_erg_diff_sp.append(-max(e_BB[k]) + max(e_sp[k]))
-        minmax_erg_diff_gr.append(-max(e_BB[k]) + max(e_gr[k]))
-        minmax_erg_diff_dist.append(-max(e_BB[k]) + max(e_dist[k]))
-        if(abs(max(e_BB[k]) - max(e_gr[k])) > 5):
-            print("file: ", k)
-            breakpoint()
-        print("\n Minmax metrics: \n")
-        print("\nBB: ", max(e_BB[k]))
-        print("\nBB_km: ", max(e_km[k]))
-        print("\nBB_sp: ", max(e_sp[k]))
-        print("\nGreedy: ", max(e_gr[k]))
-        print("\nDist: ", max(e_dist[k]))
+        # if max(e_BB[k]) > max(e_km[k]):
+        #     print("File: ", k)
+        #     print("BB alloc: ", a_BB[k])
+        #     print("km alloc: ", a_km[k])
+        #     print(max(e_BB[k]) - max(e_km[k]))
+        #     breakpoint()
+        minmax_erg_diff.append((-max(e_BB[k]) + max(e_km[k]))/max(e_BB[k]))
+        minmax_erg_diff_sp.append((-max(e_BB[k]) + max(e_sp[k]))/max(e_BB[k]))
+        minmax_erg_diff_gr.append((-max(e_BB[k]) + max(e_gr[k]))/max(e_BB[k]))
+        minmax_erg_diff_dist.append((-max(e_BB[k]) + max(e_dist[k]))/max(e_BB[k]))
+        # if(abs(max(e_BB[k]) - max(e_gr[k])) > 5):
+        #     print("file: ", k)
+        #     breakpoint()
+        # print("\n Minmax metrics: \n")
+        # print("\nBB: ", max(e_BB[k]))
+        # print("\nBB_km: ", max(e_km[k]))
+        # print("\nBB_sp: ", max(e_sp[k]))
+        # print("\nGreedy: ", max(e_gr[k]))
+        # print("\nDist: ", max(e_dist[k]))
         # breakpoint()
         count += 1
         
@@ -313,8 +320,12 @@ plt.plot(ind,runtime_dist,'-o',color='black')
 plt.plot(ind,runtime_km,'-o',color='#00D100')
 plt.plot(ind,runtime_sp,'-o',color='#00D1FF')
 
+xcoords = [11,24,36,43,52,57]
+for xc in xcoords:
+    plt.axvline(x=xc,color="black",linestyle="--")
+
 # plt.xticks(ind+3*width,ind)
-plt.legend(["BB","Greedy Allocation","Distance based Allocation","BB_k_means_clustering","BB_MBS_clustering"],loc="center left",fontsize=10) #"Greedy Allocation","Distance based Allocation",
+plt.legend(["BB","Greedy Allocation","Distance based Allocation","BB_k_means_clustering","BB_MBS_clustering"],loc="upper left",fontsize=8) #"Greedy Allocation","Distance based Allocation",
 plt.title("Runtime of BB against baseline approaches on different test cases with 4 agents")
 plt.xlabel("Test case in order of increasing number of objectives")
 plt.ylabel("Runtime (sec)")

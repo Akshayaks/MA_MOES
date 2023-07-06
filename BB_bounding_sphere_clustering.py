@@ -511,7 +511,10 @@ def bounding_sphere_clustering(problem,n_agents):
     problem.nA = 100
 
     pdf_list = problem.pdfs
-
+    
+    #If the number of objectives == number of agents, no need to do clustering
+    if len(pdf_list) == n_agents:
+        return [[0],[1],[2],[3]], 0.1
     #No incumbent clusters, so initial upper bound is infinity
     #Upper bound here is the maximum radius of the bounding spheres
     #Starting with any random clustering is really going to help compared to having nothing
@@ -608,8 +611,8 @@ if __name__ == "__main__":
 
 		problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-		if len(problem.pdfs) < n_agents or len(problem.pdfs) > 8:
-			print("Less than 4")
+		if len(problem.pdfs) != n_agents:
+			print("Not 4")
 			continue
 
 		start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
@@ -634,10 +637,10 @@ if __name__ == "__main__":
 		indv_erg_best[file] = indv_erg_OG
 		per_leaf_pruned[file] = per_leaf_pruned_OG
 
-		np.save("BB_sphere_MBS_runtime.npy", run_times)
-		np.save("BB_sphere_MBS_alloc.npy", best_allocs)
-		np.save("BB_sphere_MBS_erg.npy", indv_erg_best)
-		np.save("BB_sphere_MBS_pruned.npy",per_leaf_pruned)
+		np.save("BB_sphere_MBS_runtime_4_maps.npy", run_times)
+		np.save("BB_sphere_MBS_alloc_4_maps.npy", best_allocs)
+		np.save("BB_sphere_MBS_erg_4_maps.npy", indv_erg_best)
+		np.save("BB_sphere_MBS_pruned_4_maps.npy",per_leaf_pruned)
 
 
 

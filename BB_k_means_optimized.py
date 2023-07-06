@@ -427,6 +427,8 @@ def branch_and_bound_main(pbm,clusters,n_agents,start_pos=[-1]):
 def k_means_clustering(pbm,n_agents,n_scalar):
 	
 	pdfs = pbm.pdfs
+	if len(pdfs) == n_agents:
+		return [[0],[1],[2],[3]]
 	data = [pdf.flatten() for pdf in pdfs]
 	data = []
 	for pdf in pdfs:
@@ -477,8 +479,8 @@ if __name__ == "__main__":
 
 		problem = common.LoadProblem(pbm_file, n_agents, pdf_list=True)
 
-		if len(problem.pdfs) < n_agents or len(problem.pdfs) > 8:
-			print("Less than 4")
+		if len(problem.pdfs) != 4:
+			print("Not 4")
 			continue
 
 		start_pos = np.load("./start_positions/start_pos_ang_random_4_agents.npy",allow_pickle=True)
@@ -498,10 +500,10 @@ if __name__ == "__main__":
 		indv_erg_best[file] = indv_erg_OG
 		per_leaf_pruned[file] = per_leaf_pruned_OG
 
-		np.save("BB_k_means_MBS_runtime.npy", run_times)
-		np.save("BB_k_means_MBS_alloc.npy", best_allocs)
-		np.save("BB_k_means_MBS_erg.npy", indv_erg_best)
-		np.save("BB_k_means_MBS_pruned.npy",per_leaf_pruned)
+		np.save("BB_k_means_MBS_runtime_4_agents.npy", run_times)
+		np.save("BB_k_means_MBS_alloc_4_agents.npy", best_allocs)
+		np.save("BB_k_means_MBS_erg_4_agents.npy", indv_erg_best)
+		np.save("BB_k_means_MBS_pruned_4_agents.npy",per_leaf_pruned)
 
 
 
