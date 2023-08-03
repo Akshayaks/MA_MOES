@@ -8,6 +8,8 @@ import jax.numpy as jnp
 import pdb
 import copy
 import ergodic_metric
+from miniball import miniball
+# from BB_optimized import get_minimal_bounding_sphere
 
 # from scipy.ndimage.filters import maximum_filter
 # from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
@@ -20,6 +22,19 @@ import math
 import os
 from utils import *
 import random
+
+
+def get_minimal_bounding_sphere(pdf_list,nA,pix):
+    FC = []
+    for pdf in pdf_list:
+        EC = ergodic_metric.ErgCalc(pdf.flatten(),1,nA,10,pix)
+        FC.append(EC.phik*np.sqrt(EC.lamk))
+
+    res = miniball(np.asarray(FC,dtype=np.double))
+    pdf_FC = res["center"]
+    pdf_FC = np.divide(res["center"],np.sqrt(EC.lamk))
+    minmax = res["radius"]
+    return pdf_FC, minmax
 
 '''
 Generate the pareto front using MOES and pick the best weight to scalarize maps
@@ -49,11 +64,11 @@ def scalarize_minmax(pdf_list, s0, nA):
 
 
 #Evaluate all combinations of allocation
-def main_run_comb_allocation(pbm_file,n_agents,start_pos_file):
+def main_run_comb_allocation(pbm_file,n_agents,start_pos_file=None):
 
   print("Problem: ", pbm_file)
   start_time = time.time()
-  pbm_file_complete = "./build_prob/random_maps/" + pbm_file
+  pbm_file_complete = "./build_prob/instances/" + pbm_file
   
   problem = common.LoadProblem(pbm_file_complete, n_agents, pdf_list=True)
 
@@ -64,21 +79,22 @@ def main_run_comb_allocation(pbm_file,n_agents,start_pos_file):
   if n_obj > 4:
     print("Too many objectives: ", n_obj)
     return [],0,[]
-  if n_obj < 4:
-    print("Too few objectives: ", n_obj)
-    return [],0,[]
+  # if n_obj < 4:
+  #   print("Too few objectives: ", n_obj)
+  #   return [],0,[]
 
   problem.nA = 100
   
-  start_pos = np.load(start_pos_file,allow_pickle=True)
+  # start_pos = np.load(start_pos_file,allow_pickle=True)
 
-  problem.s0 = start_pos.item().get(pbm_file)
+  problem.s0 = np.array([0.5,0.8,0,0.6,0.4,0]) #start_pos.item().get(pbm_file)
   print("Read start position as: ",problem.s0)
 
   print("Agent start positions allotted!")
 
   alloc_comb = generate_allocations(n_obj,n_agents)
   print("\nNumber of combinations to check: ", len(alloc_comb))
+  print(alloc_comb)
   # pdb.set_trace()
 
   erg_mat = np.zeros((len(alloc_comb),n_obj))   #For each allocation, we want the individual ergodicities
@@ -90,8 +106,7 @@ def main_run_comb_allocation(pbm_file,n_agents,start_pos_file):
     for i in range(n_agents):
       pdf = np.zeros((100,100))
       if len(alloc[i]) > 1:
-        for a in alloc[i]:
-          pdf += (1/len(alloc[i]))*pdf_list[a]
+        pdf_center, _ = get_minimal_bounding_sphere([pdf_list[a] for a in alloc[i]],problem.nA,problem.pix)
         # pdf = scalarize_minmax([pdf_list[a] for a in alloc[i]],problem.s0[i*3:i*3+3],problem.nA)
       else:
         pdf = pdf_list[alloc[i][0]]
@@ -99,8 +114,12 @@ def main_run_comb_allocation(pbm_file,n_agents,start_pos_file):
       pdf = jnp.asarray(pdf.flatten())
       # print(problem.s0)
       
-      #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
-      control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+      if len(alloc[i]) > 1:
+        #Just run ergodicity optimization for fixed iterations and see which agent achieves best ergodicity in that time
+        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
+      else:
+        control, erg, _ = ErgCover(pdf, 1, problem.nA, problem.s0[3*i:3+3*i], n_scalar, problem.pix, 1000, False, None, grad_criterion=True)
+
       
       for p in alloc[i]:
         pdf_indv = jnp.asarray(pdf_list[p].flatten())
@@ -113,7 +132,7 @@ def main_run_comb_allocation(pbm_file,n_agents,start_pos_file):
   for i in range(len(alloc_comb)):
     max_array.append(max(erg_mat[i][:]))
   best_alloc = np.argmin(max_array)
-  # print(erg_mat)
+  print(erg_mat)
 
   # display_map(problem,problem.s0,pbm_file,title="Best Allocation: "+str(alloc_comb[best_alloc]))
   

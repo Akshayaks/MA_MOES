@@ -3,23 +3,25 @@ import matplotlib.pyplot as plt
 import os
 import common
 
-r_BB = np.load("./Final_exp/BB_wt_scal_runtime.npy",allow_pickle=True)
+r_BB = np.load("./Final_exp/BB_MBS_scal_runtime.npy",allow_pickle=True)
 r_km = np.load("./Final_exp/BB_k_means_MBS_runtime.npy",allow_pickle=True)
 r_sp = np.load("./Final_exp/BB_sphere_MBS_runtime.npy",allow_pickle=True)
 r_gr = np.load("./greedy_4_agents_runtime.npy",allow_pickle=True)
 r_dist = np.load("./dist_4_agents_runtime.npy",allow_pickle=True)
+r_jto = np.load("./JTO_4_agents_runtime.npy",allow_pickle=True)
 
-a_BB = np.load("./Final_exp/BB_wt_scal_alloc.npy",allow_pickle=True)
+a_BB = np.load("./Final_exp/BB_MBS_scal_alloc.npy",allow_pickle=True)
 a_km = np.load("./Final_exp/BB_k_means_MBS_alloc.npy",allow_pickle=True)
 a_sp = np.load("./Final_exp/BB_sphere_MBS_alloc.npy",allow_pickle=True)
 a_gr = np.load("./greedy_4_agents_best_alloc.npy",allow_pickle=True)
 a_dist = np.load("./dist_4_agents_best_alloc.npy",allow_pickle=True)
 
-e_BB = np.load("./Final_exp/BB_wt_scal_indv_erg.npy",allow_pickle=True)
+e_BB = np.load("./Final_exp/BB_MBS_scal_indv_erg.npy",allow_pickle=True)
 e_km = np.load("./Final_exp/BB_k_means_MBS_erg.npy",allow_pickle=True)
 e_sp = np.load("./Final_exp/BB_sphere_MBS_erg.npy",allow_pickle=True)
 e_gr = np.load("./greedy_4_agents_indv_erg.npy",allow_pickle=True)
 e_dist = np.load("./dist_4_agents_indv_erg.npy",allow_pickle=True)
+e_jto = np.load("./JTO_4_agents_indv_erg.npy",allow_pickle=True)
 
 
 r_BB = r_BB.ravel()[0]
@@ -27,6 +29,7 @@ r_km = r_km.ravel()[0]
 r_sp = r_sp.ravel()[0]
 r_gr = r_gr.ravel()[0]
 r_dist = r_dist.ravel()[0]
+r_jto = r_jto.ravel()[0]
 
 a_BB = a_BB.ravel()[0]
 a_km = a_km.ravel()[0]
@@ -39,6 +42,7 @@ e_km = e_km.ravel()[0]
 e_sp = e_sp.ravel()[0]
 e_gr = e_gr.ravel()[0]
 e_dist = e_dist.ravel()[0]
+e_jto = e_jto.ravel()[0]
 
 n_maps = []
 map_files = []
@@ -113,6 +117,7 @@ runtime_km = []
 runtime_sp = []
 runtime_gr = []
 runtime_dist = []
+runtime_jto = []
 
 indv_erg_diff = 0
 incomplete_alloc = 0
@@ -128,26 +133,32 @@ minmax_erg_diff = []
 n_gr_better = 0
 n_dist_better = 0
 n_sp_better = 0
+n_jto_better = 0
 minmax_erg_diff_gr = []
 minmax_erg_diff_dist = []
 minmax_erg_diff_sp = []
+minmax_erg_diff_jto = []
 indv_erg_diff_gr = 0
 indv_erg_diff_dist = 0
+indv_erg_diff_jto = 0
 r_imprv_sp = 0
 r_imprv_gr = 0
 r_imprv_dist = 0
+r_imprv_jto = 0
 too_big_diff = 0
 km_time = 0
 gr_time = 0
 dist_time = 0
 sp_time = 0
+jto_time = 0
 
 print("\nLen of map files: ", len(map_files))
 print("\nLen of r_BB: ", len(r_BB))
 print("\nLen of r_km: ", len(r_km))
 print("\nLen of r_sp: ", len(r_sp))
-print("\n Len of r_gr: ", len(r_gr))
+print("\nLen of r_gr: ", len(r_gr))
 print("\nLen of r_dist: ", len(r_dist))
+print("\nLen of r_jto: ", len(r_jto))
 breakpoint()
 
 for j in range(len(map_files)):
@@ -195,11 +206,17 @@ for j in range(len(map_files)):
             r_imprv_dist += (r_BB[k] - r_dist[k])/r_BB[k]
             dist_time += r_dist[k]
 
+        if r_BB[k] > r_jto[k]:
+            n_jto_better += 1
+            r_imprv_jto += (r_BB[k] - r_jto[k])/r_BB[k]
+            jto_time += r_jto[k]
+
         runtime_BB.append(r_BB[k])
         runtime_km.append(r_km[k])
         runtime_gr.append(r_gr[k])
         runtime_dist.append(r_dist[k])
         runtime_sp.append(r_sp[k])
+        runtime_jto.append(r_jto[k])
 
         if len(e_BB[k]) < n_agents or len(e_km[k]) < n_agents:
             incomplete_alloc += 1
@@ -219,6 +236,7 @@ for j in range(len(map_files)):
         minmax_erg_diff_sp.append((-max(e_BB[k]) + max(e_sp[k]))/max(e_BB[k]))
         minmax_erg_diff_gr.append((-max(e_BB[k]) + max(e_gr[k]))/max(e_BB[k]))
         minmax_erg_diff_dist.append((-max(e_BB[k]) + max(e_dist[k]))/max(e_BB[k]))
+        minmax_erg_diff_jto.append((-max(e_BB[k]) + max(e_jto[k]))/max(e_BB[k]))
         # if(abs(max(e_BB[k]) - max(e_gr[k])) > 5):
         #     print("file: ", k)
         #     breakpoint()
@@ -290,14 +308,16 @@ print("\nAverage percentage improvement in runtime km clustering: ", r_imprv_per
 print("\nAverage percentage improvement in runtime MBS clustering: ", r_imprv_sp/n_sp_better)
 print("\nAverage percentage improvement in runtime greedy: ", r_imprv_gr/n_gr_better)
 print("\nAverage percentage improvement in runtime distance: ", r_imprv_dist/n_dist_better)
+print("\nAverage percentage improvement in runtime jto: ", r_imprv_jto/n_jto_better)
 print("\n Average runtime BB: ", sum(r_BB.values())/len(r_BB))
 print("\n Average runtime BB with km clustering: ", km_time/n_km_better)
 print("\n Average runtime BB with MBS clustering: ", sp_time/n_sp_better)
 print("\n Average runtime Greedy: ", gr_time/n_gr_better)
 print("\n Average runtime dist-based: ", dist_time/n_dist_better)
+print("\n Average runtime jto: ", jto_time/n_jto_better)
 print("\nNumber of cases with same clustering for km: ", same_clustering)
 print("\nNumber of cases with same clustering for MBS: ", same_clustering_sp)
-print(n_km_better,n_gr_better,n_dist_better,n_sp_better)
+print(n_km_better,n_gr_better,n_dist_better,n_sp_better,n_jto_better)
 # print("\nDifference in maximum individual ergodicity: ", max_indv_erg/count)
 print("/nAverage, max and min in diiference in maximum individual ergodicity km clustering: ", sum(minmax_erg_diff)/len(minmax_erg_diff), max(minmax_erg_diff), min(minmax_erg_diff))
 print("/nStandard deviation BB km: ", np.std(minmax_erg_diff))
@@ -305,28 +325,30 @@ print("/nAverage, max and min in diiference in maximum individual ergodicity MBS
 print("/nStandard deviation BB MBS: ", np.std(minmax_erg_diff_sp))
 print("/nAverage, max and min in diiference in maximum individual ergodicity greedy: ", sum(minmax_erg_diff_gr)/len(minmax_erg_diff_gr), max(minmax_erg_diff_gr), min(minmax_erg_diff_gr))
 print("/nAverage, max and min in diiference in maximum individual ergodicity distance: ", sum(minmax_erg_diff_dist)/len(minmax_erg_diff_dist), max(minmax_erg_diff_dist), min(minmax_erg_diff_dist))
+print("/nAverage, max and min in diiference in maximum individual ergodicity jto: ", sum(minmax_erg_diff_jto)/len(minmax_erg_diff_jto), max(minmax_erg_diff_jto), min(minmax_erg_diff_jto))
 print("\nToo big diff: ", too_big_diff)
 # print("\nCount: ", count)
 
-plt.rcParams.update({'font.size': 20})
+plt.rcParams.update({'font.size': 15})
 # bar1 = plt.bar(ind, runtime_BB, width, color='#FF5C5C')
 # bar2 = plt.bar(ind+width, runtime_km, width, color='#00D100')
 # bar3 = plt.bar(ind+width, runtime_gr, width, color='#2E2EFF')
 # bar4 = plt.bar(ind+width, runtime_dist, width, color='black')
 
+plt.plot(ind,runtime_sp,'-o',color='#A501FF')
+plt.plot(ind,runtime_km,'-o',color='#00D100')
 plt.plot(ind,runtime_BB,'-o',color='#FF5C5C')
 plt.plot(ind,runtime_gr,'-o',color='#2E2EFF')
 plt.plot(ind,runtime_dist,'-o',color='black')
-plt.plot(ind,runtime_km,'-o',color='#00D100')
-plt.plot(ind,runtime_sp,'-o',color='#00D1FF')
+plt.plot(ind,runtime_jto,'-o',color='orange')
 
 xcoords = [11,24,36,43,52,57]
 for xc in xcoords:
     plt.axvline(x=xc,color="black",linestyle="--")
 
 # plt.xticks(ind+3*width,ind)
-plt.legend(["BB","Greedy Allocation","Distance based Allocation","BB_k_means_clustering","BB_MBS_clustering"],loc="upper left",fontsize=8) #"Greedy Allocation","Distance based Allocation",
-plt.title("Runtime of BB against baseline approaches on different test cases with 4 agents")
+plt.legend(["BB with kmeans clustering","BB with MBS clustering","BB","Greedy Allocation","Distance based Allocation","Joint Trajectory Optimization"],loc="upper left",fontsize=8) #"Greedy Allocation","Distance based Allocation",
+plt.title("Runtime of BB against BB with clustering approaches on different test cases with 4 agents")
 plt.xlabel("Test case in order of increasing number of objectives")
 plt.ylabel("Runtime (sec)")
 plt.yscale("log")

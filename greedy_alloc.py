@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import common
 from ergodic_coverage import ErgCover
@@ -6,7 +5,6 @@ import jax.numpy as jnp
 import ergodic_metric
 import time
 from utils import *
-from explicit_allocation import scalarize_minmax
 from BB_optimized import get_minimal_bounding_sphere, greedy_alloc
 
 np.random.seed(101)
