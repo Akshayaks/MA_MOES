@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
         if bounding_sphere:
             pdf_center, _ = get_minimal_bounding_sphere(problem.pdfs,problem.nA,problem.pix)
-            pdf = np.asarray(pdf.flatten())
+            pdf = np.asarray(pdf_center.flatten())
             control, erg, _ = ErgCover(pdf, n_agents, problem.nA, problem.s0, n_scalar, problem.pix, 1000, False, None, grad_criterion=True,direct_FC=pdf_center)
         else:
             for i in range(len(problem.pdfs)):
